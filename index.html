@@ -15,10 +15,19 @@
             background: black;
             box-sizing: border-box;
         }
+
+        #render-time {
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          color: white;
+        }
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <span id="render-time">0</span>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

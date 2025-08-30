@@ -114,7 +114,11 @@ export default class Vec {
 
 
     length() {
-        return Math.sqrt(this.x * this.x + this.y * this.y);
+        return Math.sqrt(this.lengthSquared());
+    }
+
+    lengthSquared() {
+        return this.x * this.x + this.y * this.y;
     }
     
     dot(v: Vec) {

@@ -2,10 +2,13 @@ import Camera from "./camera";
 import CollisionSystem from "./collisionSystem";
 import Maze from "./maze";
 import Player from "./player";
+import Ray from "./ray";
+import RenderSystem from "./renderSystem";
 import Vec from "./vector";
 
 const canvas = document.createElement('canvas');
-document.getElementById('app')?.appendChild(canvas);
+document.body.appendChild(canvas);
+const renderTimeEl = document.getElementById('render-time');
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
@@ -15,24 +18,15 @@ let h = canvas.height;
 const pressedKeys = new Set();
 const clickedKeys = new Set();
 
-// const renderCallBacks: { cb: (ctx: CanvasRenderingContext2D) => void, zIndex: number }[] = [];
-// renderCallBacks.push({
-// 	cb: (ctx) => {
-// 		if (result.normal) {
-// 			ctx.beginPath();
-// 			ctx.moveTo(obj1.position.x, obj1.position.y);
-// 			ctx.lineTo(obj1.position.x + result.normal.x * 20, obj1.position.y + result.normal.y * 20);
-// 			ctx.strokeStyle = "yellow";
-// 			ctx.lineWidth = 2;
-// 			ctx.stroke();
-// 		}
-// 	},
-// 	zIndex: 0
-// })
 
+const drawCanvas = document.createElement('canvas');
+drawCanvas.width = w;
+drawCanvas.height = h;
+const drawCtx = drawCanvas.getContext("2d") as CanvasRenderingContext2D;
 
-
+const renderSystem = new RenderSystem();
 const collisionSystem = new CollisionSystem();
+let isRenderColliders = false;
 const maze = new Maze(35, 35);
 maze.generate();
 maze.generateColliders(collisionSystem);
@@ -40,19 +34,69 @@ console.log("colliders", collisionSystem.colliders.length);
 
 const camera = new Camera();
 const players: Player[] = [];
-let isRenderColliders = true;
 
+
+createPlayer();
+createPlayer();
+createPlayer();
+createPlayer();
+createPlayer();
 createPlayer();
 createPlayer();
 
 let index = 0;
 let currentPlayer = players[index];
 
+
+const raysCount = 1;
+const angleStep = Math.PI * 2 / raysCount;
+const fieldOfViewRays: Ray[] = Array.from({ length: raysCount }, (_, k) => {
+	const angle = angleStep * k;
+	const dir = new Vec(
+		Math.cos(angle),
+		Math.sin(angle)
+	);
+
+	const ray = new Ray(currentPlayer.position, dir, 100);
+	collisionSystem.colliders.push(ray);
+	return ray;
+});
+
+console.log(fieldOfViewRays);
+
+
+renderSystem.add(
+	(ctx) => {
+		if (maze.img) ctx.drawImage(maze.img, 0, 0);
+	},
+	0
+);
+
+renderSystem.add(
+	(ctx) => {
+		for (const p of players) {
+			p.render(ctx);
+		}
+	},
+	0
+);
+
+renderSystem.add(
+	(ctx) => {
+		if (isRenderColliders)
+			for (const collider of collisionSystem.colliders) {
+				collider.render(ctx);
+			}
+	},
+	0
+);
+
+
 function createPlayer() {
 	const player = new Player();
 	player.position.setVec(randomMazePosition());
 	players.push(player);
-	collisionSystem.colliders.push(player.collider);
+	// collisionSystem.colliders.push(player.collider);
 	return player;
 }
 
@@ -96,28 +140,56 @@ function postUpdate(_dt: number) {
 	clickedKeys.clear();
 }
 
+const averageRenderTime: number[] = Array.from({ length: 50 });
+let lastRenderIndex = 0;
 function render() {
 	if (!ctx) return;
+	const start = performance.now();
 	ctx.clearRect(0, 0, w, h);
-
+	drawCtx.clearRect(0, 0, w, h);
 	camera.apply(ctx);
-	if (maze.img) ctx.drawImage(maze.img, 0, 0);
+	camera.apply(drawCtx);
+	renderSystem.render(ctx);
 
-	for (const p of players) {
-		p.render(ctx);
+
+	const centerX = currentPlayer.position.x;
+	const centerY = currentPlayer.position.y;
+	// drawCtx.fillStyle = 'rgba(255, 0, 0, 1)';
+	// drawCtx.fillRect(centerX - 200, centerY - 200, 500, 500);
+
+	drawCtx.globalCompositeOperation = 'destination-out';
+	drawCtx.filter = 'blur(50px)';
+	drawCtx.fillStyle = 'rgba(0, 0, 0, 1)';
+
+	drawCtx.beginPath();
+	const { x: x0, y: y0 } = fieldOfViewRays[0].point;
+	drawCtx.moveTo(centerX + x0, centerY + y0);
+	for (let i = 1; i < fieldOfViewRays.length; i++) {
+		const { x, y } = fieldOfViewRays[i].point;
+		drawCtx.lineTo(centerX + x, centerY + y);
 	}
+	drawCtx.closePath();
+	drawCtx.fill();
 
-	if (isRenderColliders)
-		for (const collider of collisionSystem.colliders) {
-			collider.render(ctx);
-		}
+	
+        // console.log(x, y);
 
 
-	// renderCallBacks.sort((a, b) => a.zIndex - b.zIndex);
-	// renderCallBacks.forEach(({cb}) => cb(ctx));
-	// renderCallBacks.length = 0;
-
+	camera.reset(drawCtx);
 	camera.reset(ctx);
+	ctx.drawImage(drawCanvas, 0, 0);
+
+	const end = performance.now();
+	const time = end - start;
+	averageRenderTime[lastRenderIndex] = time;
+	lastRenderIndex++;
+	if (renderTimeEl && lastRenderIndex >= averageRenderTime.length) {
+		lastRenderIndex = 0;
+		let value = 0;
+		averageRenderTime.forEach(t => value += t);
+		value /= averageRenderTime.length;
+		renderTimeEl.innerText = `${value.toFixed(2)}ms`;
+	}
 }
 
 window.addEventListener('resize', () => {
@@ -125,6 +197,8 @@ window.addEventListener('resize', () => {
 	canvas.height = window.innerHeight;
 	w = canvas.width;
 	h = canvas.height;
+	drawCanvas.width = w;
+	drawCanvas.height = h;
 	render();
 });
 

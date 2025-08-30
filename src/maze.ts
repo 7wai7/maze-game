@@ -1,6 +1,8 @@
 import type CollisionSystem from "./collisionSystem";
 import RectangleCollider from "./rectangleCollider";
 import Vec from "./vector";
+import brickWallImgUrl from "../public/brick-wall.jpg";
+import floorImgUrl from "../public/grey-stone.jpg";
 
 export default class Maze {
     rows: number;
@@ -12,6 +14,8 @@ export default class Maze {
     wallPlates: { x: number, y: number }[];
     mazeScale: number;
     img: HTMLImageElement | undefined;
+    brickWallImg: HTMLImageElement;
+    floorImg: HTMLImageElement;
 
     constructor(rows: number, cols: number) {
         this.rows = rows;
@@ -25,6 +29,11 @@ export default class Maze {
         this.openedPlates = [];
         this.wallPlates = [];
         this.mazeScale = 100;
+
+        this.brickWallImg = new Image();
+        this.brickWallImg.src = brickWallImgUrl;
+        this.floorImg = new Image();
+        this.floorImg.src = floorImgUrl;
     }
 
     generate() {
@@ -236,7 +245,20 @@ export default class Maze {
     }
 
 
-    saveRenderImage() {
+    loadImage(src: string): Promise<HTMLImageElement> {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+        });
+    }
+
+
+    async saveRenderImage() {
+        await this.loadImage(brickWallImgUrl);
+        await this.loadImage(floorImgUrl);
+
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
@@ -252,8 +274,11 @@ export default class Maze {
                 const px = cellSize * x;
                 const py = cellSize * y;
 
-                ctx.fillStyle = element === this.wall ? 'gray' : 'white';
-                ctx.fillRect(px, py, cellSize, cellSize);
+                if (element === this.wall) {
+                    ctx.drawImage(this.brickWallImg, px, py, cellSize, cellSize);
+                } else {
+                    ctx.drawImage(this.floorImg, px, py, cellSize, cellSize);
+                }
 
                 // ctx.font = "10px Arial";
                 // ctx.fillStyle = "black";

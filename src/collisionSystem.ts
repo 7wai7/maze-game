@@ -2,6 +2,7 @@ import Collider from "./collider";
 import RectangleCollider from "./rectangleCollider";
 import CircleCollider from "./circleCollider";
 import Vec from "./vector";
+import type Ray from "./ray";
 
 export default class CollisionSystem {
     colliders: Collider[];
@@ -14,28 +15,32 @@ export default class CollisionSystem {
         const type1 = col1.getType();
         const type2 = col2.getType();
 
+        // Промінь проти інших колайдерів
+        if (type1 === "ray" && type2 !== "ray") {
+            const ray = col1 as Ray;
+            if (type2 === "circle") return this.rayVsCircle(ray, col2 as CircleCollider);
+            if (type2 === "rectangle") return this.rayVsRectangle(ray, col2 as RectangleCollider);
+        } else if (type2 === "ray" && type1 !== "ray") {
+            const ray = col2 as Ray;
+            if (type1 === "circle") return this.rayVsCircle(ray, col1 as CircleCollider);
+            if (type1 === "rectangle") return this.rayVsRectangle(ray, col1 as RectangleCollider);
+        }
+
+        // Звичайні колізії (без променів)
         if (type1 === "rectangle" && type2 === "rectangle") {
-            const rect1 = col1 as RectangleCollider;
-            const rect2 = col2 as RectangleCollider;
-            return this.rectangleVsRectangle(rect1, rect2);
+            return this.rectangleVsRectangle(col1 as RectangleCollider, col2 as RectangleCollider);
         } else if (type1 === "circle" && type2 === "circle") {
-            const circle1 = col1 as CircleCollider;
-            const circle2 = col2 as CircleCollider;
-            return this.circleVsCircle(circle1, circle2);
+            return this.circleVsCircle(col1 as CircleCollider, col2 as CircleCollider);
         } else if (type1 === "circle" && type2 === "rectangle") {
-            const circle = col1 as CircleCollider;
-            const rect = col2 as RectangleCollider;
-            const result = this.circleVsRectangle(circle, rect);
+            const result = this.circleVsRectangle(col1 as CircleCollider, col2 as RectangleCollider);
             if (result.penetration) result.penetration *= -1;
-            return result;
         } else if (type1 === "rectangle" && type2 === "circle") {
-            const rect = col1 as RectangleCollider;
-            const circle = col2 as CircleCollider;
-            return this.circleVsRectangle(circle, rect);
+            return this.circleVsRectangle(col2 as CircleCollider, col1 as RectangleCollider);
         }
 
         return { collision: false };
     }
+
 
     private rectangleVsRectangle(rect1: RectangleCollider, rect2: RectangleCollider): { collision: boolean, normal?: Vec, penetration?: number } {
         const min1 = rect1.getMin();
@@ -112,44 +117,145 @@ export default class CollisionSystem {
         return { collision: true, normal, penetration };
     }
 
+    private rayVsCircle(ray: Ray, circle: CircleCollider): { collision: boolean, normal?: Vec, penetration?: number } {
+        console.log("rayVsCircle", ray);
+
+        const rayStart = ray.center;
+        const rayEnd = ray.center.add(ray.dir.scale(ray.length));
+        const toCircle = circle.center.sub(rayStart);
+        const projection = toCircle.dot(ray.dir);
+
+        // Знаходимо найближчу точку на промені до центру круга
+        let closestPoint: Vec;
+        if (projection < 0) {
+            closestPoint = rayStart;
+        } else if (projection > ray.length) {
+            closestPoint = rayEnd;
+        } else {
+            closestPoint = rayStart.add(ray.dir.scale(projection));
+        }
+
+        const distanceSquared = circle.center.sub(closestPoint).lengthSquared();
+        if (distanceSquared > circle.radius * circle.radius) {
+            return { collision: false };
+        }
+
+        // Знаходимо точку перетину
+        const distance = Math.sqrt(distanceSquared);
+        const penetration = circle.radius - distance;
+        const normal = circle.center.sub(closestPoint).normalize();
+        const point = closestPoint.add(normal.scale(penetration));
+
+        // Зберігаємо результат у промені
+        ray.collision = circle;
+        ray.point = point;
+
+        return { collision: true, normal, penetration };
+    }
+
+    private rayVsRectangle(ray: Ray, rect: RectangleCollider): { collision: boolean, normal?: Vec, penetration?: number } {
+        const rayStart = ray.center;
+        const rayEnd = rayStart.add(ray.dir.scale(ray.length));
+        const min = rect.getMin();
+        const max = rect.getMax();
+
+        // Обчислюємо параметри для перетину з площинами прямокутника
+        let tmin = -Infinity;
+        let tmax = Infinity;
+        let normal: Vec | undefined;
+        let hitSide: string | undefined;
+
+        const dir = ray.dir;
+        const invDirX = dir.x !== 0 ? 1 / dir.x : Infinity;
+        const invDirY = dir.y !== 0 ? 1 / dir.y : Infinity;
+
+        // Перевірка по осі X
+        let tx1 = (min.x - rayStart.x) * invDirX;
+        let tx2 = (max.x - rayStart.x) * invDirX;
+        if (tx1 > tx2) [tx1, tx2] = [tx2, tx1];
+
+        if (tx1 > tmin) {
+            tmin = tx1;
+            normal = new Vec(dir.x > 0 ? -1 : 1, 0);
+            hitSide = dir.x > 0 ? "left" : "right";
+        }
+        tmax = Math.min(tmax, tx2);
+
+        // Перевірка по осі Y
+        let ty1 = (min.y - rayStart.y) * invDirY;
+        let ty2 = (max.y - rayStart.y) * invDirY;
+        if (ty1 > ty2) [ty1, ty2] = [ty2, ty1];
+
+        if (ty1 > tmin) {
+            tmin = ty1;
+            normal = new Vec(0, dir.y > 0 ? -1 : 1);
+            hitSide = dir.y > 0 ? "top" : "bottom";
+        }
+        tmax = Math.min(tmax, ty2);
+
+        if (tmin > tmax || tmin > ray.length || tmax < 0) {
+            ray.collision = undefined;
+            ray.point.setVec(rayEnd);
+            return { collision: false };
+        }
+
+        const t = tmin < 0 ? tmax : tmin;
+        if (t < 0 || t > ray.length) {
+            ray.collision = undefined;
+            ray.point.setVec(rayEnd);
+            return { collision: false };
+        }
+
+        const point = rayStart.add(dir.scale(t));
+        const penetration = ray.length - t;
+
+        // Зберігаємо результат у промені
+        ray.collision = rect;
+        ray.point.setVec(point);
+        console.log(ray.point);
+        
+
+
+        return { collision: true, normal, penetration };
+    }
+
 
 
     calculateCollisions() {
-        // Перебираємо всі пари колайдерів, але лише раз для кожної пари
         for (let i = 0; i < this.colliders.length; i++) {
             const col1 = this.colliders[i];
             for (let j = i + 1; j < this.colliders.length; j++) {
                 const col2 = this.colliders[j];
 
-                // Пропускаємо, якщо обидва колайдери статичні або це однаковий колайдер
+                // Пропускаємо, якщо це один і той же колайдер або обидва статичні
                 if (col1 === col2 || (col1.isStatic && col2.isStatic)) continue;
+
 
                 const result = this.hasCollision(col1, col2);
                 if (!result.collision || !result.normal || !result.penetration) continue;
 
+                // Якщо один із колайдерів — промінь, не коригуємо позицію чи швидкість
+                if (col1.getType() === "ray" || col2.getType() === "ray") continue;
+
                 const obj1 = col1.object;
                 const obj2 = col2.object;
 
-                // Визначаємо маси (нескінченна маса для статичних об’єктів)
+                // Визначаємо маси
                 const mass1 = col1.isStatic ? Infinity : (obj1 ? obj1.mass : 1);
                 const mass2 = col2.isStatic ? Infinity : (obj2 ? obj2.mass : 1);
 
-                // Обчислюємо коефіцієнти розподілу зіткнення
+                // Обчислюємо коефіцієнти розподілу
                 let factor1, factor2;
                 if (mass1 === Infinity && mass2 === Infinity) {
-                    // Обидва статичні — нічого не рухаємо
                     factor1 = 0;
                     factor2 = 0;
                 } else if (mass1 === Infinity) {
-                    // col1 статичний, весь рух на col2
                     factor1 = 0;
                     factor2 = 1;
                 } else if (mass2 === Infinity) {
-                    // col2 статичний, весь рух на col1
                     factor1 = 1;
                     factor2 = 0;
                 } else {
-                    // Обидва динамічні, розподіляємо за масами
                     factor1 = mass2 / (mass1 + mass2);
                     factor2 = mass1 / (mass1 + mass2);
                 }
@@ -157,11 +263,9 @@ export default class CollisionSystem {
                 // Коригуємо позицію
                 if (obj1 && !col1.isStatic) {
                     obj1.position.addLocal(result.normal.scale(result.penetration * factor1));
-                    // col1.center.setVec(obj1.position);
                 }
                 if (obj2 && !col2.isStatic) {
                     obj2.position.subLocal(result.normal.scale(result.penetration * factor2));
-                    // col2.center.setVec(obj2.position);
                 }
 
                 // Коригуємо швидкість для ковзання
