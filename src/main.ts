@@ -1,8 +1,7 @@
+import { Ray, RaycastResult, vec2, World } from "p2";
 import Camera from "./camera";
-import CollisionSystem from "./collisionSystem";
 import Maze from "./maze";
 import Player from "./player";
-import Ray from "./ray";
 import RenderSystem from "./renderSystem";
 import Vec from "./vector";
 
@@ -24,14 +23,19 @@ drawCanvas.width = w;
 drawCanvas.height = h;
 const drawCtx = drawCanvas.getContext("2d") as CanvasRenderingContext2D;
 
+
+
+const world = new World({
+	gravity: [0, 0]
+});
+
+
+
 const renderSystem = new RenderSystem();
-const collisionSystem = new CollisionSystem();
-let isRenderColliders = false;
+let isRenderFOV = false;
 const maze = new Maze(35, 35);
 maze.generate();
-maze.generateColliders(collisionSystem);
-console.log("colliders", collisionSystem.colliders.length);
-
+maze.generateColliders(world);
 const camera = new Camera();
 const players: Player[] = [];
 
@@ -48,21 +52,18 @@ let index = 0;
 let currentPlayer = players[index];
 
 
-const raysCount = 1;
-const angleStep = Math.PI * 2 / raysCount;
-const fieldOfViewRays: Ray[] = Array.from({ length: raysCount }, (_, k) => {
-	const angle = angleStep * k;
-	const dir = new Vec(
-		Math.cos(angle),
-		Math.sin(angle)
-	);
-
-	const ray = new Ray(currentPlayer.position, dir, 100);
-	collisionSystem.colliders.push(ray);
-	return ray;
+const raysCount = 180;
+const fowDist = 500;
+const raycastResult = new RaycastResult();
+const ray = new Ray({
+	from: [0, 0],
+	to: [0, 0],
+	mode: Ray.CLOSEST,
+	collisionGroup: 0x0008
 });
+const hitPoint = vec2.create();
+const fieldOfView: Vec[] = Array.from({ length: raysCount }, () => new Vec());
 
-console.log(fieldOfViewRays);
 
 
 renderSystem.add(
@@ -78,36 +79,89 @@ renderSystem.add(
 			p.render(ctx);
 		}
 	},
-	0
+	1
 );
 
 renderSystem.add(
-	(ctx) => {
-		if (isRenderColliders)
-			for (const collider of collisionSystem.colliders) {
-				collider.render(ctx);
+	() => {
+		if (isRenderFOV) {
+			updateFOV(fieldOfView);
+
+			drawCtx.globalCompositeOperation = 'destination-out';
+			drawCtx.filter = `blur(${15 * camera.scale}px)`;
+			drawCtx.fillStyle = 'rgba(0, 0, 0, 1)';
+
+			drawCtx.beginPath();
+			const { x: x0, y: y0 } = fieldOfView[0];
+			drawCtx.moveTo(x0, y0);
+			for (let i = 1; i < fieldOfView.length; i++) {
+				const { x, y } = fieldOfView[i];
+				drawCtx.lineTo(x, y);
 			}
+			drawCtx.closePath();
+			drawCtx.fill();
+		}
 	},
-	0
+	5
 );
 
 
 function createPlayer() {
 	const player = new Player();
-	player.position.setVec(randomMazePosition());
+	player.body.position = randomMazePosition().toArray();
+	world.addBody(player.body);
 	players.push(player);
-	// collisionSystem.colliders.push(player.collider);
 	return player;
 }
 
 function randomMazePosition() {
 	const randomPosition = maze.openedPlates[Math.floor(Math.random() * maze.openedPlates.length)];
-	const toWorld = maze.positionToWorld(randomPosition);
-	return Vec.VecFromObj(toWorld);
+	return maze.positionToWorld(randomPosition);
 }
 
-function update(dt: number) {
-	if (clickedKeys.has('r')) isRenderColliders = !isRenderColliders;
+function updateFOV(fieldOfView: Vec[]) {
+	const angleStep = Math.PI * 2 / fieldOfView.length;
+	const rayStart = Vec.fromArray(currentPlayer.body.position);
+
+	for (let i = 0; i < fieldOfView.length; i++) {
+		const angle = angleStep * i;
+		const dir = new Vec(
+			Math.cos(angle),
+			Math.sin(angle)
+		);
+
+		const rayEnd = rayStart.copy().addLocal(dir.scale(fowDist));
+
+		vec2.copy(ray.from, rayStart.toArray());
+		vec2.copy(ray.to, rayEnd.toArray());
+		ray.update();
+		raycastResult.reset();
+		world.raycast(raycastResult, ray);
+
+		if (raycastResult.hasHit()) {
+			raycastResult.getHitPoint(hitPoint, ray);
+			fieldOfView[i].setVec(Vec.fromArray(hitPoint));
+		}
+		else {
+			fieldOfView[i].setVec(rayEnd);
+		}
+
+		// renderSystem.add(
+		// 	(ctx) => {
+		// 		ctx.beginPath();
+		// 		ctx.moveTo(rayStart.x, rayStart.y);
+		// 		ctx.lineTo(fieldOfView[i].x, fieldOfView[i].y);
+		// 		ctx.strokeStyle = 'green';
+		// 		ctx.stroke();
+		// 	},
+		// 	6,
+		// 	true
+		// );
+	}
+}
+
+function update(_dt: number) {
+	if (clickedKeys.has('r')) isRenderFOV = !isRenderFOV;
 
 	if (clickedKeys.has('q')) {
 		index = Math.abs((index - 1) % players.length);
@@ -121,61 +175,39 @@ function update(dt: number) {
 	const dirMove = new Vec(
 		pressedKeys.has('a') ? -1 : pressedKeys.has('d') ? 1 : 0,
 		pressedKeys.has('w') ? -1 : pressedKeys.has('s') ? 1 : 0
-	)
-	dirMove.normalizeLocal();
+	).normalizeLocal();
 
 	currentPlayer.isRun = pressedKeys.has('shift');
 	currentPlayer.move(dirMove);
-
-	for (const p of players) {
-		p.update(dt);
-	}
-
-	// Перевіряємо колізії
-	collisionSystem.calculateCollisions();
 }
 
-function postUpdate(_dt: number) {
-	camera.follow(currentPlayer.position);
+function postUpdate(dt: number) {
+	camera.follow(Vec.fromArray(currentPlayer.body.position), dt);
 	clickedKeys.clear();
 }
 
-const averageRenderTime: number[] = Array.from({ length: 50 });
+
+
+const averageRenderTime: number[] = Array.from({ length: 100 });
 let lastRenderIndex = 0;
 function render() {
 	if (!ctx) return;
+	ctx.imageSmoothingEnabled = false;
 	const start = performance.now();
 	ctx.clearRect(0, 0, w, h);
 	drawCtx.clearRect(0, 0, w, h);
+
+	if (isRenderFOV) {
+		drawCtx.fillStyle = 'rgba(0, 0, 0, 1)';
+		drawCtx.fillRect(0, 0, w, h);
+	}
+
 	camera.apply(ctx);
-	camera.apply(drawCtx);
+	if (isRenderFOV) camera.apply(drawCtx);
+
 	renderSystem.render(ctx);
 
-
-	const centerX = currentPlayer.position.x;
-	const centerY = currentPlayer.position.y;
-	// drawCtx.fillStyle = 'rgba(255, 0, 0, 1)';
-	// drawCtx.fillRect(centerX - 200, centerY - 200, 500, 500);
-
-	drawCtx.globalCompositeOperation = 'destination-out';
-	drawCtx.filter = 'blur(50px)';
-	drawCtx.fillStyle = 'rgba(0, 0, 0, 1)';
-
-	drawCtx.beginPath();
-	const { x: x0, y: y0 } = fieldOfViewRays[0].point;
-	drawCtx.moveTo(centerX + x0, centerY + y0);
-	for (let i = 1; i < fieldOfViewRays.length; i++) {
-		const { x, y } = fieldOfViewRays[i].point;
-		drawCtx.lineTo(centerX + x, centerY + y);
-	}
-	drawCtx.closePath();
-	drawCtx.fill();
-
-	
-        // console.log(x, y);
-
-
-	camera.reset(drawCtx);
+	if (isRenderFOV) camera.reset(drawCtx);
 	camera.reset(ctx);
 	ctx.drawImage(drawCanvas, 0, 0);
 
@@ -215,17 +247,24 @@ window.addEventListener('keyup', (e) => {
 	pressedKeys.delete(e.key.toLowerCase());
 });
 
-render();
+
 
 let lastUpdate = Date.now();
+const fixedTimeStep = 1 / 60; // 60 FPS
+const maxSubSteps = 10;
+
 function animation() {
-	const dt = Date.now() - lastUpdate;
-	if (dt > 16) {
-		lastUpdate = Date.now();
-		update(dt);
-		postUpdate(dt);
-		render();
-	}
+	const now = Date.now();
+	const dt = (now - lastUpdate);
+	lastUpdate = now;
+
+	world.step(fixedTimeStep, dt, maxSubSteps);
+
+	update(dt / 1000);
+	postUpdate(dt / 1000);
+	render();
+
 	requestAnimationFrame(animation);
 }
 requestAnimationFrame(animation);
+

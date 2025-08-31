@@ -1,5 +1,5 @@
 export default class RenderSystem {
-    callBacks: { cb: (ctx: CanvasRenderingContext2D) => void, zIndex: number, isOnce?: boolean }[] = [];
+    callBacks: { cb: (ctx: CanvasRenderingContext2D) => void, zIndex: number, isOnce: boolean }[] = [];
     isModified: boolean = false;
 
     add(cb: (ctx: CanvasRenderingContext2D) => void, zIndex: number, isOnce = false) {
@@ -9,22 +9,21 @@ export default class RenderSystem {
 
     remove(cb: (ctx: CanvasRenderingContext2D) => void) {
         this.callBacks = this.callBacks.filter(item => item.cb !== cb);
+        this.isModified = true;
     }
 
     render(ctx: CanvasRenderingContext2D) {
         if (this.isModified) {
-            this.callBacks.sort((a, b) => a.zIndex - b.zIndex);
+            this.callBacks.sort((a, b) => b.zIndex - a.zIndex);
             this.isModified = false;
         }
-        
-        this.callBacks.forEach((item) => {
-            item.cb(ctx);
-            if (item.isOnce) this.isModified = true;
-        });
 
-        if (this.isModified) {
-            this.callBacks = this.callBacks.filter(({ isOnce }) => !isOnce);
-            this.isModified = false;
+        for (let i = this.callBacks.length - 1; i >= 0; i--) {
+            const item = this.callBacks[i];
+            item.cb(ctx);
+            if (item.isOnce) {
+                this.callBacks.splice(i, 1);
+            }
         }
     }
 }

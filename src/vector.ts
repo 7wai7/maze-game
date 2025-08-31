@@ -7,8 +7,16 @@ export default class Vec {
         this.y = y;
     }
 
-    static VecFromObj(obj: { x: number, y: number }) {
+    static fromObj(obj: { x: number, y: number }) {
         return new Vec(obj.x, obj.y);
+    }
+
+    static fromArray(a: [number, number]): Vec {
+        return new Vec(a[0], a[1]);
+    }
+
+    toArray(): [number, number] {
+        return [this.x, this.y];
     }
 
     setXY(x: number, y: number) {

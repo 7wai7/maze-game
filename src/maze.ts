@@ -1,8 +1,7 @@
-import type CollisionSystem from "./collisionSystem";
-import RectangleCollider from "./rectangleCollider";
+import { Body, Box, World } from "p2";
+import brickWallImgUrl from "/brick-wall.jpg";
+import floorImgUrl from "/grey-stone.jpg";
 import Vec from "./vector";
-import brickWallImgUrl from "../public/brick-wall.jpg";
-import floorImgUrl from "../public/grey-stone.jpg";
 
 export default class Maze {
     rows: number;
@@ -28,7 +27,7 @@ export default class Maze {
         );
         this.openedPlates = [];
         this.wallPlates = [];
-        this.mazeScale = 100;
+        this.mazeScale = 32;
 
         this.brickWallImg = new Image();
         this.brickWallImg.src = brickWallImgUrl;
@@ -154,15 +153,15 @@ export default class Maze {
     }
 
     positionToWorld(p: Vec | { x: number, y: number }) {
-        return {
-            x: p.x * this.mazeScale + this.mazeScale / 2,
-            y: p.y * this.mazeScale + this.mazeScale / 2
-        }
+        return new Vec(
+            p.x * this.mazeScale + this.mazeScale / 2,
+            p.y * this.mazeScale + this.mazeScale / 2
+        )
     }
 
 
 
-    generateColliders(collisionSystem: CollisionSystem) {
+    generateColliders(world: World) {
         const walls = this.findLongWalls();
         for (const wall of walls) {
             let center = new Vec();
@@ -188,10 +187,21 @@ export default class Maze {
                 center.y = p0.y;
             }
 
+            const { x, y } = this.positionToWorld(center);
 
-            const position = this.positionToWorld(center);
-            const collider = new RectangleCollider(new Vec(position.x, position.y), w, h);
-            collisionSystem.colliders.push(collider);
+            const body = new Body({
+                mass: 0, // Setting mass to 0 makes the body static
+                position: [x, y]
+            });
+            const shape = new Box({
+                width: w,
+                height: h,
+                collisionGroup: 0x0004,
+                collisionMask: 0x0002 | 0x0008
+            })
+
+            body.addShape(shape);
+            world.addBody(body);
         }
     }
 
@@ -262,6 +272,7 @@ export default class Maze {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
+        ctx.imageSmoothingEnabled = false;
 
         canvas.width = this.cols * this.mazeScale;
         canvas.height = this.rows * this.mazeScale;
