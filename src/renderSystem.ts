@@ -8,8 +8,9 @@ export default class RenderSystem {
     }
 
     remove(cb: (ctx: CanvasRenderingContext2D) => void) {
+        const before = this.callBacks.length;
         this.callBacks = this.callBacks.filter(item => item.cb !== cb);
-        this.isModified = true;
+        if (this.callBacks.length !== before) this.isModified = true;
     }
 
     render(ctx: CanvasRenderingContext2D) {

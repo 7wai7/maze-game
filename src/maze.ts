@@ -12,9 +12,9 @@ export default class Maze {
     openedPlates: { x: number, y: number }[];
     wallPlates: { x: number, y: number }[];
     mazeScale: number;
-    img: HTMLImageElement | undefined;
     brickWallImg: HTMLImageElement;
     floorImg: HTMLImageElement;
+    sprite?: HTMLImageElement;
 
     constructor(rows: number, cols: number) {
         this.rows = rows;
@@ -39,7 +39,7 @@ export default class Maze {
         this.generateMaze();
         this.deleteDeadEnds();
         this.findOpenedAndWallPlates();
-        this.saveRenderImage();
+        // this.saveRenderImage();
     }
 
 
@@ -265,13 +265,14 @@ export default class Maze {
     }
 
 
-    async saveRenderImage() {
+    async getRenderSprite() {
+        if (this.sprite) return this.sprite;
+
         await this.loadImage(brickWallImgUrl);
         await this.loadImage(floorImgUrl);
 
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
+        const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
         ctx.imageSmoothingEnabled = false;
 
         canvas.width = this.cols * this.mazeScale;
@@ -299,8 +300,7 @@ export default class Maze {
             }
         }
 
-        this.img = new Image();
-        this.img.src = canvas.toDataURL("image/png");
-        canvas.remove();
+        this.sprite = await this.loadImage(canvas.toDataURL("image/png"));
+        return this.sprite;
     }
 }

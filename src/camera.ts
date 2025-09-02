@@ -2,33 +2,53 @@ import Vec from "./vector";
 
 export default class Camera {
     position: Vec;
+    lastPosition: Vec;
     scale: number;
+    lastScale: number;
     speed: number;
+    scaleSpeed: number;
     zoomStep: number;
+    target?: Vec;
+    targetScale: number;
 
     constructor(position = new Vec(), scale = 2) {
         this.position = position; // центр камери у світових координатах
+        this.lastPosition = position.copy();
         this.scale = scale;
-        this.speed = 5;
+        this.lastScale = scale;
+        this.targetScale = scale;
+        
+        this.speed = .1;
+        this.scaleSpeed = .05;
         this.zoomStep = .2;
     }
 
-    // Переміщення камери в точку
-    moveTo(target: Vec) {
-        this.position.setVec(target);
+    postUpdate() {
+        this.lastScale = this.scale;
+        this.lastPosition.setVec(this.position);
+
+        this.scale += (this.targetScale - this.scale) * this.scaleSpeed;
+
+        if (this.target) {
+            this.position.addLocal(
+                this.target.sub(this.position).scale(this.speed)
+            )
+        }
     }
 
-    // Плавне слідування за об’єктом (наприклад гравцем)
-    follow(target: Vec, dt: number) {
-        this.position.addLocal(
-            target.sub(this.position).scale(this.speed).scale(dt)
-        )
+    setTarget(target: Vec) {
+        this.target ? this.target.setVec(target) : this.target = target;
+    }
+
+    setZoom(zoom: number) {
+        this.targetScale = zoom;
+        this.restrictZoom();
     }
 
     // Збільшення / зменшення масштабу
     zoom(factor: number) {
-        this.scale += this.zoomStep * factor;
-        this.scale = Math.max(.5, Math.min(this.scale, 4));
+        this.targetScale += this.zoomStep * factor;
+        this.restrictZoom();
     }
 
     // Застосувати камеру до контексту
@@ -44,5 +64,9 @@ export default class Camera {
     // Скинути трансформацію (після відмалювання)
     reset(ctx: CanvasRenderingContext2D) {
         ctx.restore();
+    }
+    
+    private restrictZoom() {
+        this.targetScale = Math.max(.5, Math.min(this.targetScale, 4));
     }
 }

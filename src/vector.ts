@@ -1,4 +1,6 @@
 export default class Vec {
+    static DEGTORAD = 0.0174532925199432957;
+    static RADTODEG = 57.295779513082320876;
     x: number;
     y: number;
 
@@ -128,7 +130,7 @@ export default class Vec {
     lengthSquared() {
         return this.x * this.x + this.y * this.y;
     }
-    
+
     dot(v: Vec) {
         return this.x * v.x + this.y * v.y;
     }
