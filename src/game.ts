@@ -44,13 +44,10 @@ export default class Game {
         return this.maze.positionToWorld(randomPosition);
     }
 
-
     fixedTimeStep = 1 / 60; // 60 FPS
     maxSubSteps = 10;
     update(dt: number) {
-        this.world.step(this.fixedTimeStep, dt * 1000, this.maxSubSteps);
-
-        if (this.input.pressed.has('q')) {
+        if (this.input.clicked.has('q')) {
             this.index = Math.abs((this.index - 1) % this.players.length);
             this.currentPlayer = this.players[this.index];
         }
@@ -66,5 +63,8 @@ export default class Game {
 
         this.currentPlayer.isRun = this.input.pressed.has('shift');
         this.currentPlayer.move(dirMove);
+
+        for (const p of this.players) p.update(dt);
+        this.world.step(this.fixedTimeStep, dt * 1000, this.maxSubSteps);
     }
 }

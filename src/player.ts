@@ -1,5 +1,6 @@
 import { Body, Circle } from "p2";
 import Vec from "./vector";
+import ParticleSystem from "./particleSystem";
 
 export default class Player {
     id: number;
@@ -12,6 +13,10 @@ export default class Player {
     bodyBorderColor: string;
     sprite?: HTMLImageElement;
     canvasSize = 100;
+
+    torch: ParticleSystem;
+    torchSprite?: HTMLImageElement;
+    private torchOffset = new Vec(9, 5);
 
     constructor() {
         this.id = Math.random() * 1000;
@@ -33,8 +38,21 @@ export default class Player {
         this.bodyColor = '#ffe5aeff';
         this.bodyBorderColor = '#92815bff';
 
+        this.torch = new ParticleSystem();
+        this.torch.origin = Vec.fromArray(this.body.position);
+
         this.getRenderSprite()
             .then(s => this.sprite = s);
+
+        this.getRenderTorchSprite()
+            .then(s => this.torchSprite = s);
+    }
+
+    update(dt: number) {
+        this.torch.update(dt);
+
+        const p = this.torchOffset.copy().setAngle(this.torchOffset.getAngle() + this.body.angle);
+        this.torch.origin.setArray(this.body.position).addLocal(p);
     }
 
     move(dir: Vec) {
@@ -54,6 +72,31 @@ export default class Player {
             img.src = src;
         });
     }
+
+    render(ctx: CanvasRenderingContext2D) {
+        if (!this.sprite) return;
+
+        const [x, y] = this.body.position;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(this.body.angle);
+
+        if (this.torchSprite) {
+            ctx.save();
+            ctx.translate(this.torchOffset.x - 2.5, this.torchOffset.y + .5);
+            ctx.rotate(80 * Vec.DEGTORAD);
+            ctx.drawImage(this.torchSprite, -this.torchSprite.width / 2, -this.torchSprite.height / 2);
+            ctx.restore();
+        }
+
+        ctx.drawImage(this.sprite, -this.sprite.width / 2, -this.sprite.height / 2);
+
+        ctx.restore();
+
+        this.torch.render(ctx);
+    }
+
+
 
     async getRenderSprite() {
         if (this.sprite) return this.sprite;
@@ -102,16 +145,19 @@ export default class Player {
         ctx.closePath();
     }
 
-    render(ctx: CanvasRenderingContext2D) {
-        if(!this.sprite) return;
+    private async getRenderTorchSprite() {
+        this.torchSprite
+        if (this.torchSprite) return this.sprite;
 
-        const [x, y] = this.body.position;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(this.body.angle);
+        const canvas = document.createElement('canvas');
+        canvas.width = 2;
+        canvas.height = 7;
+        const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
-        ctx.drawImage(this.sprite, -this.sprite.width / 2, -this.sprite.height / 2);
+        ctx.fillStyle = 'rgba(57, 33, 0, 1)'
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.restore();
+        this.torchSprite = await this.loadImage(canvas.toDataURL("image/png"));
+        return this.torchSprite;
     }
 }

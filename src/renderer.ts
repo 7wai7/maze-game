@@ -57,11 +57,13 @@ export default class Renderer {
         let lastUpdate = Date.now();
         const loop = () => {
             const now = Date.now();
-            const dt = (now - lastUpdate);
+            const dt = (now - lastUpdate) / 1000;
             lastUpdate = now;
 
 
             this.game.update(dt);
+            // this.particleSystem.update(dt);
+
             this.camera.setTarget(Vec.fromArray(this.game.currentPlayer.body.position));
             if (this.input.clicked.has('r')) this.vision.isRenderFOV = !this.vision.isRenderFOV;
             this.camera.postUpdate();

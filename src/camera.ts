@@ -19,7 +19,7 @@ export default class Camera {
         this.targetScale = scale;
         
         this.speed = .1;
-        this.scaleSpeed = .05;
+        this.scaleSpeed = .1;
         this.zoomStep = .2;
     }
 

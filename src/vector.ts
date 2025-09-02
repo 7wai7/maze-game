@@ -27,11 +27,31 @@ export default class Vec {
         return this;
     }
 
+    setArray([x, y]: [number, number]) {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+
     setVec(v: Vec) {
         this.x = v.x;
         this.y = v.y;
         return this;
     }
+
+    setAngle(angle: number) {
+        const len = this.length();
+        this.x = Math.cos(angle) * len;
+        this.y = Math.sin(angle) * len;
+        return this;
+    }
+
+    
+    getAngle(): number {
+        return Math.atan2(this.y, this.x);
+    }
+
+
 
 
     addLocal(v: Vec) {
