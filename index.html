@@ -1,33 +1,44 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>maze game</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
 
-        canvas {
-            background: black;
-            box-sizing: border-box;
-        }
+<head>
+	<meta charset="UTF-8" />
+	<link rel="icon" type="image/svg+xml" href="/vite.svg" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>maze game</title>
+	<style>
+		body {
+			margin: 0;
+			overflow: hidden;
+		}
 
-        #render-time {
-          position: fixed;
-          top: 20px;
-          left: 20px;
-          color: white;
-        }
-    </style>
-  </head>
-  <body>
-    <div id="app">
-      <span id="render-time">0</span>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+		canvas {
+			background: black;
+			box-sizing: border-box;
+		}
+
+		.render-info {
+			position: fixed;
+			top: 20px;
+			left: 20px;
+			color: white;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="render-info">
+		<div>
+			<span id="fps">0</span><span> FPS</span>
+		</div>
+		<div>
+			<span id="render-time">0</span><span> ms</span>
+		</div>
+	</div>
+	<script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>

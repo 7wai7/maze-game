@@ -2,6 +2,7 @@ import { Body, Box, World } from "p2";
 import brickWallImgUrl from "/brick-wall.jpg";
 import floorImgUrl from "/grey-stone.jpg";
 import Vec from "./vector";
+import { loadImage } from "./utils";
 
 export default class Maze {
     rows: number;
@@ -39,7 +40,6 @@ export default class Maze {
         this.generateMaze();
         this.deleteDeadEnds();
         this.findOpenedAndWallPlates();
-        // this.saveRenderImage();
     }
 
 
@@ -254,22 +254,11 @@ export default class Maze {
         return walls;
     }
 
-
-    loadImage(src: string): Promise<HTMLImageElement> {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = src;
-        });
-    }
-
-
     async getRenderSprite() {
         if (this.sprite) return this.sprite;
 
-        await this.loadImage(brickWallImgUrl);
-        await this.loadImage(floorImgUrl);
+        await loadImage(brickWallImgUrl);
+        await loadImage(floorImgUrl);
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -300,7 +289,7 @@ export default class Maze {
             }
         }
 
-        this.sprite = await this.loadImage(canvas.toDataURL("image/png"));
+        this.sprite = await loadImage(canvas.toDataURL("image/png"));
         return this.sprite;
     }
 }
