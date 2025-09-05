@@ -9,7 +9,7 @@ export default class VisionLayer extends Behaviour {
     ctx: CanvasRenderingContext2D;
     raysCount = 180;
     fowRadius = 500;
-    scaleFactor = .2;
+    scaleFactor = .25;
 
     private raycastResult = new RaycastResult();
     private ray = new Ray({

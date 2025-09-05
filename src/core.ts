@@ -15,6 +15,7 @@ export default class Core {
         useTools: true,
         game: {
             collisions: true,
+            fastSpeed: true
         },
         render: {
             fov: false,

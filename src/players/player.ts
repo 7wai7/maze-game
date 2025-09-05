@@ -3,13 +3,15 @@ import Vec from "../vector";
 import { loadImage } from "../utils";
 import Behaviour from "../baseBehaviour";
 import Core from "../core";
+import MiniMap from "./miniMap";
 
 export default abstract class Player extends Behaviour {
     body!: Body;
-    speed = 5;
+    speed = 4;
     isRun = false;
     radius = 5;
     mass = 1;
+    miniMap = new MiniMap(this);
     bodyColor = '#ffe5aeff';
     bodyBorderColor = '#92815bff';
     sprite?: HTMLImageElement;
@@ -21,7 +23,7 @@ export default abstract class Player extends Behaviour {
 
     constructor() {
         super();
-        this.runSpeed = this.speed * 1.5;
+        this.runSpeed = this.speed * 2;
     }
 
     init(world: World) {
@@ -42,44 +44,52 @@ export default abstract class Player extends Behaviour {
         (this.body as any).userData = this;
 
         Core.emitter.on('debug-collisions', () => {
-            const value = Core.debugTools.game.collisions;
-
-            for (const shape of this.body.shapes) {
-                if(value) {
-                    shape.collisionGroup = this.collisionGroup;
-                    shape.collisionMask = this.collisionMask;
-                } else {
-                    shape.collisionGroup = 0;
-                    shape.collisionMask = 0;
-                }
-            }
+            this.toggleCollisions();
+        })
+        Core.emitter.on('debug-useTools', () => {
+            this.toggleCollisions();
         })
 
         this.getRenderSprite()
             .then(s => this.sprite = s);
     }
 
-    abstract update(dt: number): void;
-
-    abstract render(ctx: CanvasRenderingContext2D): void;
-
     move(dir: Vec, speed?: number) {
         this.moveDir = dir;
         if (dir.x === 0 && dir.y === 0) return;
 
-        const moveSpeed = speed ?? (this.isRun ? this.runSpeed : this.speed);
+        const useTools = Core.debugTools.useTools && Core.debugTools.game.fastSpeed;
+        const moveSpeed = speed ?? (this.isRun ? (useTools ? this.speed * 5 : this.runSpeed) : this.speed);
         this.body.velocity = dir.scale(moveSpeed).toArray();
         this.body.angle = Math.atan2(dir.y, dir.x);
     }
 
 
 
+    toggleCollisions() {
+        const value = !Core.debugTools.useTools || Core.debugTools.game.collisions;
+        for (const shape of this.body.shapes) {
+            if (value) {
+                shape.collisionGroup = this.collisionGroup;
+                shape.collisionMask = this.collisionMask;
+            } else {
+                shape.collisionGroup = 0;
+                shape.collisionMask = 0;
+            }
+        }
+    }
+
+
+    render(_ctx: CanvasRenderingContext2D): void {
+        this.miniMap.render();
+    }
+
     async getRenderSprite() {
         if (this.sprite) return this.sprite;
 
         const canvas = document.createElement('canvas');
-        canvas.width = 20;
-        canvas.height = 20;
+        canvas.width = 30;
+        canvas.height = 30;
         const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
         ctx.save();

@@ -48,8 +48,6 @@ export default class Runner extends Player {
             this.torch.frequency = Math.max(this.torch.frequency - dt * 10, 0);
         }
 
-        this.torch.update(dt);
-
         const p = this.torchOffset.copy().setAngle(this.torchOffset.getAngle() + this.body.angle);
         this.torch.origin.setArray(this.body.position).addLocal(p);
     }

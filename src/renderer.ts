@@ -38,8 +38,12 @@ export default class Renderer {
         this.renderSystem.add((ctx) => ctx.drawImage(sprite, 0, 0), 0);
 
         this.renderSystem.add((ctx) => {
-            for (const p of Core.game.players) p.render(ctx);
+            for (const p of Core.game.players) p.render?.(ctx);
         }, 10);
+
+        this.renderSystem.add(() => {
+            Core.game.currentPlayer.miniMap.render();
+        }, 11);
 
         this.renderSystem.add(
             (ctx) => {

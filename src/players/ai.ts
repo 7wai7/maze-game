@@ -48,7 +48,6 @@ export default class AI extends Behaviour {
 
     setTarget(target: Vec) {
         this.target.setVec(target);
-
     }
 
     createMazePath() {
@@ -59,8 +58,6 @@ export default class AI extends Behaviour {
 
 
     update() {
-        if (Core.inputManager.clicked.has('f')) this.createMazePath();
-
         if (this.mazePath && this.mazePath.length > 0) {
             const currentMazePos = Core.game.maze.worldToMaze(this.player.body.position);
             const firstPos = this.mazePath.at(-1);

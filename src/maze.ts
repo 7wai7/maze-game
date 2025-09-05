@@ -152,14 +152,6 @@ export default class Maze {
         }
     }
 
-    positionToWorld(p: Vec | { x: number, y: number }) {
-        return new Vec(
-            p.x * this.mazeScale + this.mazeScale / 2,
-            p.y * this.mazeScale + this.mazeScale / 2
-        )
-    }
-
-
 
     generateColliders(world: World) {
         const walls = this.findLongWalls();
@@ -187,7 +179,7 @@ export default class Maze {
                 center.y = p0.y;
             }
 
-            const { x, y } = this.positionToWorld(center);
+            const { x, y } = this.mazeToWorld(center);
 
             const body = new Body({
                 mass: 0, // Setting mass to 0 makes the body static

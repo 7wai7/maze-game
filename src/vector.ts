@@ -46,7 +46,7 @@ export default class Vec {
         return this;
     }
 
-    
+
     getAngle(): number {
         return Math.atan2(this.y, this.x);
     }
@@ -157,6 +157,11 @@ export default class Vec {
 
     copy() {
         return new Vec(this.x, this.y);
+    }
+
+    verify({ x, y }: Vec) {
+        return this.x === x
+            && this.y === y;
     }
 
 

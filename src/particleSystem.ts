@@ -1,8 +1,9 @@
+import Behaviour from "./baseBehaviour";
 import type { ParticleValuesRanges } from "./particle";
 import Particle from "./particle";
 import Vec from "./vector";
 
-export default class ParticleSystem {
+export default class ParticleSystem extends Behaviour {
     particles: Particle[] = [];
     maxCount = 1000;
     frequency = 50; // кількість частинок за секунду
@@ -12,6 +13,7 @@ export default class ParticleSystem {
     private fireCanvas!: HTMLCanvasElement;
 
     constructor() {
+        super();
         this.createFireCanvas();
     }
 

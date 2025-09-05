@@ -53,7 +53,7 @@ export default class Game {
 
     randomMazePosition() {
         const randomPosition = this.maze.openedPlates[Math.floor(Math.random() * this.maze.openedPlates.length)];
-        return this.maze.positionToWorld(randomPosition);
+        return this.maze.mazeToWorld(randomPosition);
     }
 
     controlCurrentPlayer() {
@@ -72,8 +72,8 @@ export default class Game {
         }
     }
 
-    fixedTimeStep = 1 / 60; // 60 FPS
-    maxSubSteps = 10;
+    private fixedTimeStep = 1 / 60; // 60 FPS
+    private maxSubSteps = 10;
     update(dt: number) {
         if (Core.inputManager.clicked.has('q')) {
             this.index = (this.index - 1 + this.players.length) % this.players.length;
