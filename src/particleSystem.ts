@@ -67,6 +67,7 @@ export default class ParticleSystem {
         ctx.beginPath();
         ctx.ellipse(0, 0, 5, 5, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.closePath();
         ctx.restore();
     }
 }

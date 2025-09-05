@@ -1,6 +1,8 @@
+import Behaviour from "./baseBehaviour";
+import Core from "./core";
 import Vec from "./vector";
 
-export default class Camera {
+export default class Camera extends Behaviour {
     position: Vec;
     lastPosition: Vec;
     scale: number;
@@ -12,12 +14,13 @@ export default class Camera {
     targetScale: number;
 
     constructor(position = new Vec(), scale = 2) {
+        super();
         this.position = position; // центр камери у світових координатах
         this.lastPosition = position.copy();
         this.scale = scale;
         this.lastScale = scale;
         this.targetScale = scale;
-        
+
         this.speed = .1;
         this.scaleSpeed = .1;
         this.zoomStep = .2;
@@ -26,8 +29,9 @@ export default class Camera {
     postUpdate() {
         this.lastScale = this.scale;
         this.lastPosition.setVec(this.position);
-
         this.scale += (this.targetScale - this.scale) * this.scaleSpeed;
+
+        this.setTarget(Vec.fromArray(Core.game.currentPlayer.body.position));
 
         if (this.target) {
             this.position.addLocal(
@@ -65,7 +69,7 @@ export default class Camera {
     reset(ctx: CanvasRenderingContext2D) {
         ctx.restore();
     }
-    
+
     private restrictZoom() {
         this.targetScale = Math.max(.5, Math.min(this.targetScale, 4));
     }

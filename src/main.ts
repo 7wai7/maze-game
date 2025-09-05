@@ -1,13 +1,15 @@
 import Renderer from "./renderer";
 import Game from "./game";
 import InputManager from "./inputManager";
+import Core from "./core";
 
 async function bootstrap() {
-	const inputManager = new InputManager();
-	const game = new Game(inputManager);
-	const render = new Renderer(game, inputManager);
-	await render.init(); // load render sprites / vision layer
-	render.start();
+	Core.game = new Game();
+	Core.renderer = new Renderer();
+	Core.inputManager = new InputManager();
+	Core.game.init();
+	await Core.renderer.init(); // load render sprites / vision layer
+	Core.renderer.start();
 }
 
 bootstrap().catch(console.error);

@@ -1,18 +1,15 @@
 import { Ray, RaycastResult, vec2 } from "p2";
 import Vec from "./vector";
-import type Renderer from "./renderer";
 import Runner from "./players/runner";
+import Core from "./core";
+import Behaviour from "./baseBehaviour";
 
-export default class VisionLayer {
-    renderer: Renderer;
+export default class VisionLayer extends Behaviour {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     raysCount = 180;
     fowRadius = 500;
     scaleFactor = .2;
-
-    isRenderFOV = true;
-    isRayRenderFOV = false;
 
     private raycastResult = new RaycastResult();
     private ray = new Ray({
@@ -24,24 +21,25 @@ export default class VisionLayer {
     private hitPoint = vec2.create();
     private fieldOfView: Vec[];
 
-    constructor(renderer: Renderer) {
-        this.renderer = renderer;
+    constructor() {
+        super();
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
-        this.canvas.width = this.renderer.worldWidth * this.scaleFactor;
-        this.canvas.height = this.renderer.worldHeight * this.scaleFactor;
+        this.canvas.width = Core.game.worldWidth * this.scaleFactor;
+        this.canvas.height = Core.game.worldHeight * this.scaleFactor;
 
         this.fieldOfView = Array.from({ length: this.raysCount }, () => new Vec());
+
+        this.initRenderRaysFOV();
     }
 
-    update(_dt: number) {
-        if (!this.isRenderFOV && !this.isRayRenderFOV) return;
-        this.updateFOV();
+    postUpdate(_dt: number) {
+        if (!Core.debugTools.useTools || Core.debugTools.render.fov || Core.debugTools.render.fovRays) this.updateFOV();
     }
 
     private updateFOV() {
         const angleStep = Math.PI * 2 / this.fieldOfView.length;
-        const rayStart = Vec.fromArray(this.renderer.game.currentPlayer.body.position);
+        const rayStart = Vec.fromArray(Core.game.currentPlayer.body.position);
 
         for (let i = 0; i < this.fieldOfView.length; i++) {
             const angle = angleStep * i;
@@ -57,7 +55,7 @@ export default class VisionLayer {
             vec2.copy(this.ray.to, rayEnd.toArray());
             this.ray.update();
             this.raycastResult.reset();
-            this.renderer.game.world.raycast(this.raycastResult, this.ray);
+            Core.game.world.raycast(this.raycastResult, this.ray);
 
             if (this.raycastResult.hasHit()) {
                 this.raycastResult.getHitPoint(this.hitPoint, this.ray);
@@ -67,13 +65,12 @@ export default class VisionLayer {
     }
 
     render() {
-        if (this.isRenderFOV) this.renderFOV();
-        if (this.isRayRenderFOV) this.renderRaysFOV();
+        this.clear();
+        if (!Core.debugTools.useTools || Core.debugTools.render.fov) this.renderFOV();
     }
 
     clear() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        if (this.isRenderFOV) this.fillVision();
     }
 
     private fillVision() {
@@ -82,7 +79,9 @@ export default class VisionLayer {
     }
 
     private renderFOV() {
-        const currentPlayer = this.renderer.game.currentPlayer;
+        this.fillVision();
+
+        const currentPlayer = Core.game.currentPlayer;
 
         this.ctx.save();
         this.ctx.scale(this.scaleFactor, this.scaleFactor);
@@ -111,10 +110,11 @@ export default class VisionLayer {
         this.ctx.restore();
     }
 
-    private renderRaysFOV() {
-        this.renderer.renderSystem.add(
+    private initRenderRaysFOV() {
+        Core.renderer.renderSystem.add(
             (ctx) => {
-                const [startX, startY] = this.renderer.game.currentPlayer.body.position;
+                if (!Core.debugTools.useTools || !Core.debugTools.render.fovRays) return;
+                const [startX, startY] = Core.game.currentPlayer.body.position;
 
                 ctx.strokeStyle = 'yellow';
                 ctx.lineWidth = .5;
@@ -127,12 +127,13 @@ export default class VisionLayer {
                 ctx.closePath();
                 ctx.stroke();
             },
-            10,
-            true
+            10
         )
 
-        this.renderer.renderSystem.add(
+        Core.renderer.renderSystem.add(
             (ctx) => {
+                if (!Core.debugTools.useTools || !Core.debugTools.render.fovRays) return;
+
                 ctx.strokeStyle = 'green';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
@@ -145,8 +146,7 @@ export default class VisionLayer {
                 ctx.closePath();
                 ctx.stroke();
             },
-            11,
-            true
+            11
         )
     }
 }

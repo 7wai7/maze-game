@@ -54,6 +54,8 @@ export default class Runner extends Player {
         this.torch.origin.setArray(this.body.position).addLocal(p);
     }
 
+    postUpdate(_dt: number): void {}
+
     render(ctx: CanvasRenderingContext2D) {
         if (!this.sprite || !this.torchSprite) return;
 

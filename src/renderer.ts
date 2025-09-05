@@ -1,13 +1,9 @@
 import Camera from "./camera";
-import Vec from "./vector";
-import type Game from "./game";
 import VisionLayer from "./visionLayer";
 import RenderSystem from "./renderSystem";
-import type InputManager from "./inputManager";
+import Core from "./core";
 
 export default class Renderer {
-    game: Game;
-    input: InputManager;
     camera = new Camera();
     renderSystem = new RenderSystem();
     renderTimeEl!: HTMLElement;
@@ -15,26 +11,19 @@ export default class Renderer {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     vision!: VisionLayer;
-    worldWidth: number;
-    worldHeight: number;
     inited = false;
 
     private frameCount = 0;
     private lastTime = performance.now();
 
 
-    constructor(game: Game, input: InputManager) {
-        this.game = game;
-        this.input = input;
+    constructor() {
         this.renderTimeEl = document.getElementById('render-time') as HTMLElement;
         this.fpsEl = document.getElementById('fps') as HTMLElement;
 
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
         this.resizeCanvas();
-
-        this.worldWidth = game.worldWidth;
-        this.worldHeight = game.worldHeight;
 
         window.addEventListener('resize', () => this.resizeCanvas());
         window.addEventListener('wheel', (e) => this.camera.zoom(e.deltaY > 0 ? -1 : 1));
@@ -43,15 +32,25 @@ export default class Renderer {
     }
 
     async init() {
-        this.vision = new VisionLayer(this);
-        const sprite = await this.game.maze.getRenderSprite();
+        this.vision = new VisionLayer();
+        const sprite = await Core.game.maze.getRenderSprite();
+
         this.renderSystem.add((ctx) => ctx.drawImage(sprite, 0, 0), 0);
 
         this.renderSystem.add((ctx) => {
-            for (const p of this.game.players) p.render(ctx);
-        }, 1);
+            for (const p of Core.game.players) p.render(ctx);
+        }, 10);
 
-        this.renderSystem.add(() => this.vision.render(), 5);
+        this.renderSystem.add(
+            (ctx) => {
+                if(Core.debugTools.useTools && Core.debugTools.render.mazeNumbers) Core.game.maze.renderNumbers(ctx)
+            }, 20
+        )
+
+        this.renderSystem.add((ctx) => {
+            this.vision.render();
+            ctx.drawImage(this.vision.canvas, 0, 0, Core.game.worldWidth, Core.game.worldHeight)
+        }, 30);
 
         this.inited = true;
     }
@@ -71,16 +70,11 @@ export default class Renderer {
             }
 
 
-            this.game.update(dt);
-            this.camera.setTarget(Vec.fromArray(this.game.currentPlayer.body.position));
-            if (this.input.clicked.has('r')) this.vision.isRenderFOV = !this.vision.isRenderFOV;
-            if (this.input.clicked.has('y')) this.vision.isRayRenderFOV = !this.vision.isRayRenderFOV;
-
-            this.vision.update(dt);
-            this.camera.postUpdate();
+            Core.game.update(dt);
+            Core.game.postUpdate(dt);
 
             this.render();
-            this.input.clicked.clear();
+            Core.inputManager.clicked.clear();
 
             requestAnimationFrame(loop);
         }
@@ -96,16 +90,8 @@ export default class Renderer {
         const start = performance.now();
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.vision.clear();
-
         this.camera.apply(this.ctx);
         this.renderSystem.render(this.ctx);
-
-        this.ctx.drawImage(
-            this.vision.canvas,
-            0, 0, this.worldWidth, this.worldHeight
-        );
-
         this.camera.reset(this.ctx);
 
 

@@ -254,6 +254,79 @@ export default class Maze {
         return walls;
     }
 
+    solveMazeBFS(start: Vec, end: Vec) {
+        const rows = this.maze.length;
+        const cols = this.maze[0].length;
+        const queue: ([number, number, Vec[]])[] = [[start.x, start.y, []]]; // [row, col, path_array]
+        const visited = new Set();
+        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // Up, Down, Left, Right
+
+        visited.add(`${start.x},${start.y}`);
+
+        while (queue.length > 0) {
+            const [currentCol, currentRow, currentPath] = queue.shift() as [number, number, Vec[]];
+
+            if (currentRow === end.y && currentCol === end.x) {
+                return [...currentPath, new Vec(currentCol, currentRow)]; // Found the path
+            }
+
+            for (const [dr, dc] of directions) {
+                const newRow = currentRow + dr;
+                const newCol = currentCol + dc;
+                const newCoordKey = `${newRow},${newCol}`;
+
+                if (
+                    newRow >= 0 && newRow < rows &&
+                    newCol >= 0 && newCol < cols &&
+                    this.maze[newRow][newCol] === this.opened &&
+                    !visited.has(newCoordKey)
+                ) {
+
+                    visited.add(newCoordKey);
+                    queue.push([newCol, newRow, [...currentPath, new Vec(currentCol, currentRow)]]);
+                }
+            }
+        }
+        return null; // No path found
+    }
+
+
+    worldToMaze(p: Vec | [number, number]) {
+        const x = Array.isArray(p) ? p[0] : p.x;
+        const y = Array.isArray(p) ? p[1] : p.y;
+        return new Vec(
+                    Math.floor(x / this.mazeScale),
+                    Math.floor(y / this.mazeScale)
+                )
+    }
+
+    mazeToWorld({x, y}: Vec | { x: number; y: number; }) {
+        return new Vec(
+                    x * this.mazeScale + this.mazeScale / 2,
+                    y * this.mazeScale + this.mazeScale / 2
+                )
+    }
+
+
+
+    renderNumbers(ctx: CanvasRenderingContext2D) {
+        const cellSize = this.mazeScale;
+
+        for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+                const element = this.maze[y][x];
+                const px = cellSize * x;
+                const py = cellSize * y;
+
+                ctx.font = "6px Arial";
+                ctx.fillStyle = "white";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(`(${x}, ${y}) ${element}`, px + cellSize / 2, py + cellSize / 2);
+            }
+        }
+    }
+
     async getRenderSprite() {
         if (this.sprite) return this.sprite;
 
@@ -280,12 +353,6 @@ export default class Maze {
                 } else {
                     ctx.drawImage(this.floorImg, px, py, cellSize, cellSize);
                 }
-
-                // ctx.font = "10px Arial";
-                // ctx.fillStyle = "black";
-                // ctx.textAlign = "center";
-                // ctx.textBaseline = "middle";
-                // ctx.fillText(`(${x}, ${y}) ${element}`, px + cellSize / 2, py + cellSize / 2);
             }
         }
 

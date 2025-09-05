@@ -1,21 +1,26 @@
 import { Body, Circle, World } from "p2";
 import Vec from "../vector";
 import { loadImage } from "../utils";
+import Behaviour from "../baseBehaviour";
+import Core from "../core";
 
-export default abstract class Player {
+export default abstract class Player extends Behaviour {
     body!: Body;
     speed = 5;
     isRun = false;
     radius = 5;
     mass = 1;
-    moveDir = new Vec();
     bodyColor = '#ffe5aeff';
     bodyBorderColor = '#92815bff';
     sprite?: HTMLImageElement;
+    collisionGroup = 0x0002;
+    collisionMask = 0x0002 | 0x0004;
 
+    protected moveDir = new Vec();
     protected runSpeed: number;
 
     constructor() {
+        super();
         this.runSpeed = this.speed * 1.5;
     }
 
@@ -29,12 +34,26 @@ export default abstract class Player {
 
         this.body.addShape(new Circle({
             radius: this.radius,
-            collisionGroup: 0x0002,
-            collisionMask: 0x0002 | 0x0004
+            collisionGroup: this.collisionGroup,
+            collisionMask: this.collisionMask
         }));
 
         world.addBody(this.body);
         (this.body as any).userData = this;
+
+        Core.emitter.on('debug-collisions', () => {
+            const value = Core.debugTools.game.collisions;
+
+            for (const shape of this.body.shapes) {
+                if(value) {
+                    shape.collisionGroup = this.collisionGroup;
+                    shape.collisionMask = this.collisionMask;
+                } else {
+                    shape.collisionGroup = 0;
+                    shape.collisionMask = 0;
+                }
+            }
+        })
 
         this.getRenderSprite()
             .then(s => this.sprite = s);
@@ -52,6 +71,8 @@ export default abstract class Player {
         this.body.velocity = dir.scale(moveSpeed).toArray();
         this.body.angle = Math.atan2(dir.y, dir.x);
     }
+
+
 
     async getRenderSprite() {
         if (this.sprite) return this.sprite;
