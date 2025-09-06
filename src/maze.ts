@@ -249,7 +249,7 @@ export default class Maze {
     solveMazeBFS(start: Vec, end: Vec) {
         const rows = this.maze.length;
         const cols = this.maze[0].length;
-        const queue: ([number, number, Vec[]])[] = [[start.x, start.y, []]]; // [row, col, path_array]
+        const queue: ([number, number, Vec[]])[] = [[start.x, start.y, []]];
         const visited = new Set();
         const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // Up, Down, Left, Right
 
@@ -283,20 +283,52 @@ export default class Maze {
     }
 
 
+    // пошук найдальшої точки вздовш коридору до першого тупика або розвилки 
+    findNextWaypoint(start: Vec, dir: Vec) {
+        let { x, y } = start;
+        let { x: dx, y: dy } = dir;
+
+        const maxSteps = 100;
+        let i = 0;
+
+        while (i < maxSteps) {
+            i++;
+
+            const possibleDirs = [];
+            if (this.maze[y - dx]?.[x + dy] === this.opened) possibleDirs.push({ x: dy, y: -dx }); // left
+            if (this.maze[y + dy]?.[x + dx] === this.opened) possibleDirs.push({ x: dx, y: dy }); // front
+            if (this.maze[y + dx]?.[x - dy] === this.opened) possibleDirs.push({ x: -dy, y: dx }); // right
+
+            if (possibleDirs.length === 1) {
+                dx = possibleDirs[0].x;
+                dy = possibleDirs[0].y;
+                x += dx;
+                y += dy;
+                continue;
+            }
+
+            break; // якщо доступних напрямків нема (тупик) або більше одного (розвилка) -- зупиняємо цикл
+        }
+
+        if(start.x !== x || start.y !== y) return new Vec(x, y);
+        return null;
+    }
+
+
     worldToMaze(p: Vec | [number, number]) {
         const x = Array.isArray(p) ? p[0] : p.x;
         const y = Array.isArray(p) ? p[1] : p.y;
         return new Vec(
-                    Math.floor(x / this.mazeScale),
-                    Math.floor(y / this.mazeScale)
-                )
+            Math.floor(x / this.mazeScale),
+            Math.floor(y / this.mazeScale)
+        )
     }
 
-    mazeToWorld({x, y}: Vec | { x: number; y: number; }) {
+    mazeToWorld({ x, y }: Vec | { x: number; y: number; }) {
         return new Vec(
-                    x * this.mazeScale + this.mazeScale / 2,
-                    y * this.mazeScale + this.mazeScale / 2
-                )
+            x * this.mazeScale + this.mazeScale / 2,
+            y * this.mazeScale + this.mazeScale / 2
+        )
     }
 
 

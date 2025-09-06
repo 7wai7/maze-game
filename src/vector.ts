@@ -183,7 +183,11 @@ export default class Vec {
         return (t >= 0 && t <= 1 && u >= 0 && u <= 1);
     }
 
+    static distanceSquared(v1: Vec, v2: Vec): number {
+        return (v2.x - v1.x) ** 2 + (v2.y - v1.y) ** 2;
+    }
+
     static distance(v1: Vec, v2: Vec): number {
-        return Math.sqrt((v2.x - v1.x) ** 2 + (v2.y - v1.y) ** 2);
+        return Math.sqrt(Vec.distanceSquared(v1, v2));
     }
 }

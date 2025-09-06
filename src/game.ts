@@ -36,7 +36,6 @@ export default class Game {
         }
         this.createPlayer(true);
 
-
         this.index = 0;
         this.currentPlayer = this.players[this.index];
     }
@@ -46,7 +45,7 @@ export default class Game {
         player.init(this.world);
         player.body.position = this.randomMazePosition().toArray();
 
-        if (isMinotaur) this.minotaurAI = new AI(player);
+        if (isMinotaur) this.minotaurAI = new AI(player as Minotaur);
         this.players.push(player);
         return player;
     }
@@ -84,7 +83,7 @@ export default class Game {
             this.currentPlayer = this.players[this.index];
         }
 
-        if (this.currentPlayer != this.minotaurAI?.player) this.controlCurrentPlayer();
+        if (this.currentPlayer != this.minotaurAI?.minotaur) this.controlCurrentPlayer();
 
         for (const obj of Core.gameObjects) obj.update?.(dt);
         this.world.step(this.fixedTimeStep, dt * 1000, this.maxSubSteps);

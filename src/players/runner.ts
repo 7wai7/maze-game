@@ -1,3 +1,4 @@
+import Core from "../core";
 import ParticleSystem from "../particleSystem";
 import { clamp, loadImage } from "../utils";
 import Vec from "../vector";
@@ -34,7 +35,10 @@ export default class Runner extends Player {
 
         this.lastDamageTime = performance.now();
         this.hp = Math.max(this.hp - damage, 0);
-        if (this.hp <= 0) this.isDead = true;
+        if (this.hp <= 0) {
+            this.isDead = true;
+            Core.emitter.emit('player-was-killed');
+        }
     }
 
     move(dir: Vec, speed?: number) {

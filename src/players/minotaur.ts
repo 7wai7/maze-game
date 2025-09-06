@@ -9,8 +9,12 @@ export default class Minotaur extends Player {
     damage = 40;
     leapDist = 16;
     isLeapRun = false;
-    leapDir = new Vec();
-    leapRunSpeed: number;
+    
+    private leapDir = new Vec();
+    private leapRunSpeed: number;
+
+    private leapCooldown = 2000;
+    private lastLeapCooldownTime = 0;
 
     private leapTime = 0;
     private startLeapTime = 0;
@@ -71,6 +75,8 @@ export default class Minotaur extends Player {
 
     leapForward() {
         if (this.isLeapRun) return;
+        if(performance.now() - this.lastLeapCooldownTime < this.leapCooldown) return;
+
         this.isLeapRun = true;
         this.startLeapTime = performance.now();
         this.leapTime = (this.leapDist / this.leapRunSpeed) * 1000;
@@ -84,10 +90,15 @@ export default class Minotaur extends Player {
         if (!this.isLeapRun) super.move(dir);
     }
 
-    leapUpdate() {
+    update(_dt: number): void {
+        this.leapUpdate();
+    }
+
+    private leapUpdate() {
         if (!this.isLeapRun) return;
         if (performance.now() - this.startLeapTime > this.leapTime) {
             this.isLeapRun = false;
+            this.lastLeapCooldownTime = performance.now();
             return;
         }
 
@@ -105,14 +116,11 @@ export default class Minotaur extends Player {
 
         if (this.raycastResult.hasHit()) {
             this.isLeapRun = false;
+            this.lastLeapCooldownTime = performance.now();
             return;
         }
 
         super.move(this.leapDir, this.leapRunSpeed);
-    }
-
-    update(_dt: number): void {
-        this.leapUpdate();
     }
 
     render(ctx: CanvasRenderingContext2D): void {

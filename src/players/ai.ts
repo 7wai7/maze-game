@@ -1,21 +1,40 @@
+import { Ray, RaycastResult, vec2 } from "p2";
 import Behaviour from "../baseBehaviour";
 import Core from "../core";
 import Vec from "../vector";
-import type Player from "./player";
+import Runner from "./runner";
+import type Minotaur from "./minotaur";
 
 export default class AI extends Behaviour {
-    player: Player;
+    minotaur: Minotaur;
 
-    private target = new Vec();
+    private lastMazePosition = new Vec();
+    private mazeMovingDir = new Vec();
     private mazePath?: { x: number; y: number; }[] | null;
 
-    constructor(player: Player) {
+    private closestRunner?: Runner;
+    private findClosestPlayerTime = 500;
+    private lastTime = 0;
+
+    private maxRayDist = 500;
+    private raycastResult = new RaycastResult();
+    private ray = new Ray({
+        from: [0, 0],
+        to: [0, 0],
+        mode: Ray.CLOSEST,
+        collisionGroup: 0x0008
+    });
+
+    constructor(minotaur: Minotaur) {
         super();
-        this.player = player;
+        this.minotaur = minotaur;
+        Core.emitter.on('player-was-killed', () => {
+            this.createMazePath();
+        })
 
         Core.renderer.renderSystem.add(
             (ctx) => {
-                if(!Core.debugTools.useTools || !Core.debugTools.render.aiWay) return;
+                if (!Core.debugTools.useTools || !Core.debugTools.render.aiWay) return;
                 if (!this.mazePath || this.mazePath.length === 0) return;
 
                 const scale = Core.game.maze.mazeScale;
@@ -46,32 +65,87 @@ export default class AI extends Behaviour {
         )
     }
 
-    setTarget(target: Vec) {
-        this.target.setVec(target);
-    }
-
-    createMazePath() {
-        const start = Core.game.maze.worldToMaze(this.player.body.position);
-        this.target = Vec.fromObj(this.game.maze.openedPlates[Math.floor(Math.random() * this.game.maze.openedPlates.length)]);
-        this.mazePath = Core.game.maze.solveMazeBFS(start, this.target)?.reverse(); // 
+    createMazePath(target?: Vec | null) {
+        const start = Core.game.maze.worldToMaze(this.minotaur.body.position);
+        const newTarget = target ? target : Vec.fromObj(this.game.maze.openedPlates[Math.floor(Math.random() * this.game.maze.openedPlates.length)]);
+        this.mazePath = Core.game.maze.solveMazeBFS(start, newTarget)?.reverse();
     }
 
 
     update() {
+
+        if (performance.now() - this.lastTime > this.findClosestPlayerTime) {
+            this.lastTime = performance.now();
+            this.findRunner();
+        }
+
+        this.walkAlongMazePath();
+        this.attackRunner();
+
+        const mazePosition = Core.game.maze.worldToMaze(this.minotaur.body.position);
+        if (!mazePosition.verify(this.lastMazePosition)) {
+            this.mazeMovingDir = mazePosition.sub(this.lastMazePosition);
+            this.lastMazePosition.setVec(mazePosition);
+        }
+    }
+
+    private walkAlongMazePath() {
+        if (this.closestRunner && !this.closestRunner.isDead) return;
+
         if (this.mazePath && this.mazePath.length > 0) {
-            const currentMazePos = Core.game.maze.worldToMaze(this.player.body.position);
+            const currentMazePos = Core.game.maze.worldToMaze(this.minotaur.body.position);
             const firstPos = this.mazePath.at(-1);
             if (firstPos && firstPos.x === currentMazePos.x && firstPos.y === currentMazePos.y) this.mazePath.pop();
         } else this.createMazePath();
 
-
-        if(this.mazePath) {
+        if (this.mazePath) {
             const firstPos = this.mazePath.at(-1);
-            if(firstPos) {
+            if (firstPos) {
                 const toWorld = Core.game.maze.mazeToWorld(firstPos);
-                const dir = toWorld.sub(Vec.fromArray(this.player.body.position)).normalizeLocal();
-                this.player.move(dir);
+                const dir = toWorld.sub(Vec.fromArray(this.minotaur.body.position)).normalizeLocal();
+                this.minotaur.move(dir);
             }
         }
+    }
+
+    private attackRunner() {
+        if (!this.closestRunner || this.closestRunner.isDead) return;
+
+        const dir = Vec.fromArray(this.closestRunner.body.position).sub(Vec.fromArray(this.minotaur.body.position)).normalizeLocal();
+        this.minotaur.move(dir);
+        this.minotaur.leapForward();
+    }
+
+    private findRunner() {
+        let closestDistSquared = this.maxRayDist * this.maxRayDist;
+        let runner: Runner | undefined;
+
+        for (const p of Core.game.players) {
+            if (p === this.minotaur || !(p instanceof Runner) || (p instanceof Runner && p.isDead)) continue;
+
+            const distSquare = Vec.distanceSquared(Vec.fromArray(p.body.position), Vec.fromArray(this.minotaur.body.position))
+            if (distSquare > closestDistSquared) continue;
+
+            vec2.copy(this.ray.from, this.minotaur.body.position);
+            vec2.copy(this.ray.to, p.body.position);
+            this.ray.update();
+            this.raycastResult.reset();
+            Core.game.world.raycast(this.raycastResult, this.ray);
+
+            // якщо зіткнення нема, значить промінь дойшов до ігрока
+            // промінь може зіткнутись лише із стінами
+            if (!this.raycastResult.hasHit()) {
+                closestDistSquared = distSquare;
+                runner = p as Runner;
+            }
+        }
+
+        if (this.closestRunner && !this.closestRunner.isDead && !runner) { // загубили ігрока
+            const mazePosition = Core.game.maze.worldToMaze(this.minotaur.body.position);
+            const newTarget = Core.game.maze.findNextWaypoint(mazePosition, this.mazeMovingDir);
+            this.createMazePath(newTarget);
+        }
+
+        this.closestRunner = runner;
     }
 }
