@@ -8,10 +8,12 @@ export default class HPBars extends Behaviour {
     darkRed: HTMLElement;
     green: HTMLElement;
 
+    private barsContainer: HTMLElement;
     private maxWidth: number;
 
     constructor() {
         super();
+        this.barsContainer = document.querySelector('.bars-container') as HTMLElement;
         this.red = document.getElementById('hide-bar-red') as HTMLElement;
         this.darkRed = document.getElementById('hide-bar-dark-red') as HTMLElement;
         this.green = document.getElementById('hide-bar-green') as HTMLElement;
@@ -26,20 +28,25 @@ export default class HPBars extends Behaviour {
         })
 
         Core.emitter.on('change-current-player', (player: Player) => {
-            if (!(player instanceof Runner)) return;
             this.setValuesByPlayer(player);
         });
     }
 
-    setValuesByPlayer(player: Runner) {
-        const redFactor = player.hp / player.maxHp;
-        this.red.style.width = `${this.maxWidth * redFactor}px`;
+    setValuesByPlayer(player: Player) {
+        if (player instanceof Runner) {
+            this.barsContainer.style.visibility = 'visible';
 
-        const darkRedfactor = player.damageReductionCurrentValue / player.maxHp;
-        this.darkRed.style.width = `${this.maxWidth * darkRedfactor}px`;
+            const redFactor = player.hp / player.maxHp;
+            this.red.style.width = `${this.maxWidth * redFactor}px`;
 
-        const greenFactor = player.endurance / player.maxEndurance;
-        this.green.style.width = `${this.maxWidth * greenFactor}px`;
+            const darkRedfactor = player.damageReductionCurrentValue / player.maxHp;
+            this.darkRed.style.width = `${this.maxWidth * darkRedfactor}px`;
+
+            const greenFactor = player.endurance / player.maxEndurance;
+            this.green.style.width = `${this.maxWidth * greenFactor}px`;
+        } else {
+            this.barsContainer.style.visibility = 'hidden';
+        }
     }
 
     update(_dt: number): void {

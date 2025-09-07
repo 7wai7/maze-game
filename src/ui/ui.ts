@@ -1,4 +1,5 @@
 import HPBars from "./hpBars";
+import HurtOverlay from "./hurtOverlay";
 import DebugTools from "./sidebar";
 
 DebugTools();
@@ -11,5 +12,6 @@ function resizeMiniMap() {
 }
 
 new HPBars();
+new HurtOverlay();
 resizeMiniMap();
 window.addEventListener('resize', resizeMiniMap);

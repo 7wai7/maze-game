@@ -2,14 +2,10 @@ import Camera from "./camera";
 import VisionLayer from "./visionLayer";
 import RenderSystem from "./renderSystem";
 import Core from "./core";
-import hurtOverlayUrl from "/hurt_overlay.png";
-import { loadImage } from "./utils";
-import Runner from "./players/runner";
 
 export default class Renderer {
     camera = new Camera();
     renderSystem = new RenderSystem();
-    renderSystemUI = new RenderSystem();
 
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
@@ -43,7 +39,6 @@ export default class Renderer {
     async init() {
         this.vision = new VisionLayer();
         const sprite = await Core.game.maze.getRenderSprite();
-        const hurtOverlaySprite = await loadImage(hurtOverlayUrl);
 
         this.renderSystem.add((ctx) => ctx.drawImage(sprite, 0, 0), 0);
 
@@ -61,14 +56,6 @@ export default class Renderer {
             this.vision.render();
             ctx.drawImage(this.vision.canvas, 0, 0, Core.game.worldWidth, Core.game.worldHeight)
         }, 30);
-
-        this.renderSystemUI.add((ctx) => {
-            const p = Core.game.currentPlayer;
-            if (!(p instanceof Runner)) return;
-            ctx.globalAlpha = 1 - p.damageTimer.elapsed01();
-            ctx.drawImage(hurtOverlaySprite, 0, 0, this.canvas.width, this.canvas.height)
-            ctx.globalAlpha = 1;
-        }, 10);
 
         this.inited = true;
     }
@@ -109,7 +96,6 @@ export default class Renderer {
         this.camera.apply(this.ctx);
         this.renderSystem.render(this.ctx);
         this.camera.reset(this.ctx);
-        this.renderSystemUI.render(this.ctx);
 
         this.calculateAverageRenderTime(start);
     }
