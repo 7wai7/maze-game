@@ -27,7 +27,6 @@ export default class VisionLayer extends Behaviour {
         this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
         this.canvas.width = Core.game.worldWidth * this.scaleFactor;
         this.canvas.height = Core.game.worldHeight * this.scaleFactor;
-
         this.fieldOfView = Array.from({ length: this.raysCount }, () => new Vec());
 
         this.initRenderRaysFOV();
@@ -94,7 +93,7 @@ export default class VisionLayer extends Behaviour {
 
         const flickerAlpha = currentPlayer instanceof Runner ? (0.9 + r * 0.1) : 1; // 0.9–1.0
         const attenuationFactor = currentPlayer instanceof Runner ? currentPlayer.torchAttenuationFactor : 0;
-        const alpha = Math.max(flickerAlpha - attenuationFactor, .1);
+        const alpha = Math.max(flickerAlpha - attenuationFactor, .2);
         this.ctx.fillStyle = `rgba(0,0,0,${alpha})`;
 
         this.ctx.beginPath();

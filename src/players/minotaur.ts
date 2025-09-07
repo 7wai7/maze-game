@@ -1,23 +1,26 @@
-import { Ray, RaycastResult, vec2, World } from "p2";
+import { AABB, Box, Ray, RaycastResult, vec2, World } from "p2";
 import Vec from "../vector";
 import Player from "./player";
 import hornsImgUrl from "/horns.png";
 import Runner from "./runner";
 import { loadImage } from "../utils";
+import Timer from "../timer";
+import Core from "../core";
 
 export default class Minotaur extends Player {
-    damage = 40;
-    leapDist = 16;
-    isLeapRun = false;
-    
-    private leapDir = new Vec();
-    private leapRunSpeed: number;
+    damage = 10;
+    dashDamage = 30;
+    dashDist = 16;
+    isDashRun = false;
 
-    private leapCooldown = 2000;
-    private lastLeapCooldownTime = 0;
+    private dashDir = new Vec();
+    private dashRunSpeed: number;
 
-    private leapTime = 0;
-    private startLeapTime = 0;
+    private attachCooldownTimer = new Timer(500);
+    private dashCooldownTimer = new Timer(2000);
+    private dashTimer = new Timer(0);
+
+    private attackShape: Box;
     private hornsSprite?: HTMLImageElement;
 
     // промінь для перевірки стін перед мінотавром під час ривка
@@ -33,16 +36,21 @@ export default class Minotaur extends Player {
         super();
         this.radius = 7;
         this.mass = 15;
-        this.leapRunSpeed = this.speed * 2.5;
+        this.dashRunSpeed = this.speed * 2.5;
         this.bodyColor = 'rgba(143, 50, 0, 1)';
         this.bodyBorderColor = '#642300ff';
+        
+        this.attackShape = new Box({
+            width: this.radius / 2,
+            height: this.radius * 2
+        });
 
         loadImage(hornsImgUrl)
             .then(s => this.hornsSprite = s);
     }
 
     init(world: World) {
-        super.init(world);
+        super.init(world);   
 
         world.on("beginContact", (evt: any) => {
             const { bodyA, bodyB } = evt;
@@ -55,54 +63,82 @@ export default class Minotaur extends Player {
     }
 
     collisionWithRunner(runner: Runner) {
+        if (!this.isDashRun) return;
         if (!runner.canGetDamage()) return;
+        runner.getDamage(this.dashDamage);
 
         // якщо майже не рухається → урону нема
-        if (this.moveDir.length() < 0.1) return;
+        // if (this.moveDir.length() < 0.1) return;
 
-        // відносна швидкість зіткнення
-        const relVel = Vec.fromArray(runner.body.velocity)
-            .sub(Vec.fromArray(this.body.velocity));
-        const impactSpeed = relVel.length();
+        // // відносна швидкість зіткнення
+        // const relVel = Vec.fromArray(runner.body.velocity)
+        //     .sub(Vec.fromArray(this.body.velocity));
+        // const impactSpeed = relVel.length();
+        // if (impactSpeed < 2) return;
 
-        if (impactSpeed < 2) return;
-
-        // урон масштабований від швидкості
-        const finalDamage = this.damage * (impactSpeed / this.leapRunSpeed);
-        runner.getDamage(finalDamage);
+        // // урон масштабований від швидкості
+        // const finalDamage = Math.floor(this.dashDamage * (impactSpeed / this.dashRunSpeed));
+        // runner.getDamage(finalDamage);
     }
 
 
-    leapForward() {
-        if (this.isLeapRun) return;
-        if(performance.now() - this.lastLeapCooldownTime < this.leapCooldown) return;
+    attack() {
+        if(!this.attachCooldownTimer.isElapsed()) return;
+        this.attachCooldownTimer.reset();
+        
+        const offset = new Vec(this.radius * 2, 0);
+        offset.setAngle(this.body.angle);
+        const p: [number, number] = [this.body.position[0] + offset.x, this.body.position[1] + offset.y];
+        const angle = this.body.angle;
 
-        this.isLeapRun = true;
-        this.startLeapTime = performance.now();
-        this.leapTime = (this.leapDist / this.leapRunSpeed) * 1000;
-        this.leapDir.setXY(
+        const attackAABB = new AABB();
+        this.attackShape.computeAABB(attackAABB, p, angle);
+
+        for (const player of Core.game.players) {
+            if (!(player instanceof Runner) || player.isDead) continue;
+
+            for (const shape of player.body.shapes) {
+                const playerAABB = new AABB();
+                shape.computeAABB(playerAABB, player.body.position, player.body.angle);
+                if (attackAABB.overlaps(playerAABB)) {
+                    player.getDamage(this.damage);
+                    return;
+                }
+            }
+        }
+    }
+
+    dash() {
+        if (this.isDashRun) return;
+        if (!this.dashCooldownTimer.isElapsed()) return;
+
+        this.isDashRun = true;
+        this.dashTimer.duration = (this.dashDist / this.dashRunSpeed) * 1000;
+        this.dashTimer.reset();
+
+        this.dashDir.setXY(
             Math.cos(this.body.angle),
             Math.sin(this.body.angle)
         )
     }
 
     move(dir: Vec) {
-        if (!this.isLeapRun) super.move(dir);
+        if (!this.isDashRun) super.move(dir);
     }
 
     update(_dt: number): void {
-        this.leapUpdate();
+        this.dashUpdate();
     }
 
-    private leapUpdate() {
-        if (!this.isLeapRun) return;
-        if (performance.now() - this.startLeapTime > this.leapTime) {
-            this.isLeapRun = false;
-            this.lastLeapCooldownTime = performance.now();
+    private dashUpdate() {
+        if (!this.isDashRun) return;
+        if (this.dashTimer.isElapsed()) {
+            this.isDashRun = false;
+            this.dashCooldownTimer.reset();
             return;
         }
 
-        const rayDist = 10;
+        const rayDist = this.radius * 1.5;
         const rayEnd: [number, number] = [
             this.body.position[0] + Math.cos(this.body.angle) * rayDist,
             this.body.position[1] + Math.sin(this.body.angle) * rayDist
@@ -115,12 +151,12 @@ export default class Minotaur extends Player {
         this.body.world.raycast(this.raycastResult, this.ray);
 
         if (this.raycastResult.hasHit()) {
-            this.isLeapRun = false;
-            this.lastLeapCooldownTime = performance.now();
+            this.isDashRun = false;
+            this.dashCooldownTimer.reset();
             return;
         }
 
-        super.move(this.leapDir, this.leapRunSpeed);
+        super.move(this.dashDir, this.dashRunSpeed);
     }
 
     render(ctx: CanvasRenderingContext2D): void {

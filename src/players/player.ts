@@ -33,7 +33,6 @@ export default abstract class Player extends Behaviour {
             angularDamping: .3
         });
 
-
         this.body.addShape(new Circle({
             radius: this.radius,
             collisionGroup: this.collisionGroup,
@@ -77,11 +76,6 @@ export default abstract class Player extends Behaviour {
                 shape.collisionMask = 0;
             }
         }
-    }
-
-
-    render(_ctx: CanvasRenderingContext2D): void {
-        this.miniMap.render();
     }
 
     async getRenderSprite() {

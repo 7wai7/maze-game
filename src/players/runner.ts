@@ -1,5 +1,6 @@
 import Core from "../core";
 import ParticleSystem from "../particleSystem";
+import Timer from "../timer";
 import { clamp, loadImage } from "../utils";
 import Vec from "../vector";
 import Player from "./player";
@@ -7,13 +8,13 @@ import Player from "./player";
 export default class Runner extends Player {
     hp = 100;
     isDead = false;
-    invulnerabilityTime = 1000;
+    invulnerabilityTimer = new Timer(1000);
+    damageTimer = new Timer(1000);
 
     torchAttenuation = 0;
     torchAttenuationFactor = 0;
 
     private torchAttenuationSpeed = 5;
-    private lastDamageTime = 0;
     private torch: ParticleSystem;
     private torchSprite?: HTMLImageElement;
     private torchOffset = new Vec(9, 5);
@@ -27,14 +28,17 @@ export default class Runner extends Player {
     }
 
     canGetDamage() {
-        return !this.isDead && (performance.now() - this.lastDamageTime > this.invulnerabilityTime);
+        return !this.isDead && (this.invulnerabilityTimer.isElapsed());
     }
 
     getDamage(damage: number) {
-        if (!this.canGetDamage()) return;
+        if (!this.canGetDamage() || damage <= 0) return;
 
-        this.lastDamageTime = performance.now();
-        this.hp = Math.max(this.hp - damage, 0);
+        this.invulnerabilityTimer.reset();
+        this.damageTimer.reset();
+        const incurredDamage = Math.min(damage, this.hp);
+        this.hp -= incurredDamage;
+
         if (this.hp <= 0) {
             this.isDead = true;
             Core.emitter.emit('player-was-killed');
@@ -42,7 +46,7 @@ export default class Runner extends Player {
     }
 
     move(dir: Vec, speed?: number) {
-        if(!this.isDead) super.move(dir, speed);
+        if (!this.isDead) super.move(dir, speed);
     }
 
     update(dt: number) {
@@ -56,7 +60,7 @@ export default class Runner extends Player {
         this.torch.origin.setArray(this.body.position).addLocal(p);
     }
 
-    postUpdate(_dt: number): void {}
+    postUpdate(_dt: number): void { }
 
     render(ctx: CanvasRenderingContext2D) {
         if (!this.sprite || !this.torchSprite) return;

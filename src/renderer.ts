@@ -2,19 +2,24 @@ import Camera from "./camera";
 import VisionLayer from "./visionLayer";
 import RenderSystem from "./renderSystem";
 import Core from "./core";
+import hurtOverlayUrl from "/hurt_overlay.png";
+import { loadImage } from "./utils";
+import Runner from "./players/runner";
 
 export default class Renderer {
     camera = new Camera();
     renderSystem = new RenderSystem();
-    renderTimeEl!: HTMLElement;
-    fpsEl!: HTMLElement;
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
-    vision!: VisionLayer;
-    inited = false;
+    renderSystemUI = new RenderSystem();
 
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
+    private vision!: VisionLayer;
+    private inited = false;
     private frameCount = 0;
     private lastTime = performance.now();
+
+    private renderTimeEl!: HTMLElement;
+    private fpsEl!: HTMLElement;
 
 
     constructor() {
@@ -29,11 +34,16 @@ export default class Renderer {
         window.addEventListener('wheel', (e) => this.camera.zoom(e.deltaY > 0 ? -1 : 1));
 
         document.body.appendChild(this.canvas);
+
+        Core.emitter.on('change-current-player', () => {
+            Core.game.currentPlayer.miniMap.render();
+        })
     }
 
     async init() {
         this.vision = new VisionLayer();
         const sprite = await Core.game.maze.getRenderSprite();
+        const hurtOverlaySprite = await loadImage(hurtOverlayUrl);
 
         this.renderSystem.add((ctx) => ctx.drawImage(sprite, 0, 0), 0);
 
@@ -41,13 +51,9 @@ export default class Renderer {
             for (const p of Core.game.players) p.render?.(ctx);
         }, 10);
 
-        this.renderSystem.add(() => {
-            Core.game.currentPlayer.miniMap.render();
-        }, 11);
-
         this.renderSystem.add(
             (ctx) => {
-                if(Core.debugTools.useTools && Core.debugTools.render.mazeNumbers) Core.game.maze.renderNumbers(ctx)
+                if (Core.debugTools.useTools && Core.debugTools.render.mazeNumbers) Core.game.maze.renderNumbers(ctx)
             }, 20
         )
 
@@ -55,6 +61,14 @@ export default class Renderer {
             this.vision.render();
             ctx.drawImage(this.vision.canvas, 0, 0, Core.game.worldWidth, Core.game.worldHeight)
         }, 30);
+
+        this.renderSystemUI.add((ctx) => {
+            const p = Core.game.currentPlayer;
+            if (!(p instanceof Runner)) return;
+            ctx.globalAlpha = 1 - p.damageTimer.elapsed01();
+            ctx.drawImage(hurtOverlaySprite, 0, 0, this.canvas.width, this.canvas.height)
+            ctx.globalAlpha = 1;
+        }, 10);
 
         this.inited = true;
     }
@@ -78,7 +92,7 @@ export default class Renderer {
             Core.game.postUpdate(dt);
 
             this.render();
-            Core.inputManager.clicked.clear();
+            Core.inputManager.postUpdate();
 
             requestAnimationFrame(loop);
         }
@@ -86,8 +100,6 @@ export default class Renderer {
         requestAnimationFrame(loop);
     }
 
-    averageRenderTime: number[] = Array(100).fill(0);
-    lastRenderIndex = 0;
     render() {
         if (!this.inited) return;
         this.ctx.imageSmoothingEnabled = false;
@@ -97,8 +109,14 @@ export default class Renderer {
         this.camera.apply(this.ctx);
         this.renderSystem.render(this.ctx);
         this.camera.reset(this.ctx);
+        this.renderSystemUI.render(this.ctx);
 
+        this.calculateAverageRenderTime(start);
+    }
 
+    private averageRenderTime: number[] = Array(100).fill(0);
+    private lastRenderIndex = 0;
+    calculateAverageRenderTime(start: number) {
         const end = performance.now();
         const time = end - start;
         this.averageRenderTime[this.lastRenderIndex] = time;

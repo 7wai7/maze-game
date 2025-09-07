@@ -27,6 +27,7 @@ export default class MiniMap extends Behaviour {
             // Упакувати координати у одне число
             const key = (this.mazePosition.x << 16) | (this.mazePosition.y & 0xffff);
             this.path.add(key);
+            this.render();
         }
     }
 

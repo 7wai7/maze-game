@@ -13,6 +13,13 @@ export default class RenderSystem {
         if (this.callBacks.length !== before) this.isModified = true;
     }
 
+    replace(cb: (ctx: CanvasRenderingContext2D) => void, zIndex: number) {
+        const index = this.callBacks.findIndex(({ zIndex: index }) => index === zIndex);
+        if(index != -1) {
+            this.callBacks[index].cb = cb;
+        }
+    }
+
     render(ctx: CanvasRenderingContext2D) {
         if (this.isModified) {
             this.callBacks.sort((a, b) => b.zIndex - a.zIndex);

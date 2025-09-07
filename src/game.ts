@@ -44,7 +44,6 @@ export default class Game {
         const player = isMinotaur ? new Minotaur() : new Runner();
         player.init(this.world);
         player.body.position = this.randomMazePosition().toArray();
-
         if (isMinotaur) this.minotaurAI = new AI(player as Minotaur);
         this.players.push(player);
         return player;
@@ -65,9 +64,8 @@ export default class Game {
         this.currentPlayer.move(dirMove);
 
         if (this.currentPlayer instanceof Minotaur) {
-            if (Core.inputManager.clicked.has(' ')) {
-                this.currentPlayer.leapForward();
-            }
+            if (Core.inputManager.clicked.has(' ')) this.currentPlayer.dash();
+            if (Core.inputManager.clicked.has('e')) this.currentPlayer.attack();
         }
     }
 
@@ -77,10 +75,12 @@ export default class Game {
         if (Core.inputManager.clicked.has('q')) {
             this.index = (this.index - 1 + this.players.length) % this.players.length;
             this.currentPlayer = this.players[this.index];
+            Core.emitter.emit('change-current-player');
         }
         if (Core.inputManager.clicked.has('e')) {
             this.index = (this.index + 1) % this.players.length;
             this.currentPlayer = this.players[this.index];
+            Core.emitter.emit('change-current-player');
         }
 
         if (this.currentPlayer != this.minotaurAI?.minotaur) this.controlCurrentPlayer();
