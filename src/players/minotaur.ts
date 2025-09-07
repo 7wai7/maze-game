@@ -126,7 +126,8 @@ export default class Minotaur extends Player {
         if (!this.isDashRun) super.move(dir);
     }
 
-    update(_dt: number): void {
+    update(dt: number): void {
+        super.update(dt);
         this.dashUpdate();
     }
 

@@ -1,6 +1,6 @@
 import { Body, Circle, World } from "p2";
 import Vec from "../vector";
-import { loadImage } from "../utils";
+import { clamp, loadImage } from "../utils";
 import Behaviour from "../baseBehaviour";
 import Core from "../core";
 import MiniMap from "./miniMap";
@@ -12,11 +12,17 @@ export default abstract class Player extends Behaviour {
     radius = 5;
     mass = 1;
     miniMap = new MiniMap(this);
-    bodyColor = '#ffe5aeff';
-    bodyBorderColor = '#92815bff';
-    sprite?: HTMLImageElement;
-    collisionGroup = 0x0002;
-    collisionMask = 0x0002 | 0x0004;
+
+    maxEndurance = 100;
+    endurance = this.maxEndurance;
+    enduranceReductionSpeed = 40;
+    enduranceRecoverySpeed = 20;
+
+    protected bodyColor = '#ffe5aeff';
+    protected bodyBorderColor = '#92815bff';
+    protected sprite?: HTMLImageElement;
+    protected collisionGroup = 0x0002;
+    protected collisionMask = 0x0002 | 0x0004;
 
     protected moveDir = new Vec();
     protected runSpeed: number;
@@ -58,11 +64,21 @@ export default abstract class Player extends Behaviour {
         if (dir.x === 0 && dir.y === 0) return;
 
         const useTools = Core.debugTools.useTools && Core.debugTools.game.fastSpeed;
-        const moveSpeed = speed ?? (this.isRun ? (useTools ? this.speed * 5 : this.runSpeed) : this.speed);
+        const moveSpeed = speed ?? (this.isRun && this.endurance !== 0 ? (useTools ? this.speed * 5 : this.runSpeed) : this.speed);
         this.body.velocity = dir.scale(moveSpeed).toArray();
         this.body.angle = Math.atan2(dir.y, dir.x);
     }
 
+    update(dt: number): void {
+        this.updateEndurance(dt);
+    }
+
+    protected updateEndurance(dt: number) {
+        const useTools = Core.debugTools.useTools && Core.debugTools.game.fastSpeed;
+        if (this.isRun && !useTools && (this.moveDir.x !== 0 || this.moveDir.y !== 0)) this.endurance -= dt * this.enduranceReductionSpeed;
+        else this.endurance += dt * this.enduranceRecoverySpeed;
+        this.endurance = clamp(this.endurance, 0, this.maxEndurance);
+    }
 
 
     toggleCollisions() {

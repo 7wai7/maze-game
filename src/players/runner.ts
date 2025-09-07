@@ -6,10 +6,13 @@ import Vec from "../vector";
 import Player from "./player";
 
 export default class Runner extends Player {
-    hp = 100;
+    maxHp = 100;
+    hp = this.maxHp;
     isDead = false;
     invulnerabilityTimer = new Timer(1000);
     damageTimer = new Timer(1000);
+    damageReductionSpeed = 15;
+    damageReductionCurrentValue = this.maxHp;
 
     torchAttenuation = 0;
     torchAttenuationFactor = 0;
@@ -38,18 +41,31 @@ export default class Runner extends Player {
         this.damageTimer.reset();
         const incurredDamage = Math.min(damage, this.hp);
         this.hp -= incurredDamage;
+        Core.emitter.emit('player-damaged', this, incurredDamage);
 
         if (this.hp <= 0) {
             this.isDead = true;
-            Core.emitter.emit('player-was-killed');
+            Core.emitter.emit('player-was-killed', this);
         }
     }
 
-    move(dir: Vec, speed?: number) {
-        if (!this.isDead) super.move(dir, speed);
+    move(dir: Vec) {
+        if (this.isDead) return;
+        super.move(dir);
     }
 
     update(dt: number) {
+        super.update(dt);
+        this.updateTorch(dt);
+
+        this.damageReductionCurrentValue = Math.max(this.damageReductionCurrentValue - dt * this.damageReductionSpeed, this.hp);
+    }
+
+    protected updateEndurance(dt: number): void {
+        super.updateEndurance(this.isDead ? -(dt / 3) : dt);
+    }
+
+    private updateTorch(dt: number) {
         if (this.isDead && this.torchAttenuationFactor < 1) {
             this.torchAttenuation = clamp(this.torchAttenuation + dt, 0, this.torchAttenuationSpeed);
             this.torchAttenuationFactor = this.torchAttenuation / this.torchAttenuationSpeed;
@@ -59,8 +75,6 @@ export default class Runner extends Player {
         const p = this.torchOffset.copy().setAngle(this.torchOffset.getAngle() + this.body.angle);
         this.torch.origin.setArray(this.body.position).addLocal(p);
     }
-
-    postUpdate(_dt: number): void { }
 
     render(ctx: CanvasRenderingContext2D) {
         if (!this.sprite || !this.torchSprite) return;

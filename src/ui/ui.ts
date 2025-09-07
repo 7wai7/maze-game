@@ -1,3 +1,4 @@
+import HPBars from "./hpBars";
 import DebugTools from "./sidebar";
 
 DebugTools();
@@ -9,5 +10,6 @@ function resizeMiniMap() {
   miniMap.height = size;
 }
 
+new HPBars();
 resizeMiniMap();
 window.addEventListener('resize', resizeMiniMap);

@@ -7,6 +7,10 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>maze game</title>
 	<style>
+		:root {
+			--hp-bar-width: 200px
+		}
+
 		* {
 			margin: 0;
 			box-sizing: border-box;
@@ -45,13 +49,6 @@
 			flex-direction: row;
 			align-items: start;
 			justify-content: space-between;
-		}
-
-		.render-info {
-			color: white;
-			display: flex;
-			flex-direction: column;
-			gap: 10px;
 		}
 
 		.debug-tools-btn {
@@ -135,6 +132,37 @@
 		}
 
 
+
+		.bars-container .hp-bar,
+		.bars-container .endurance-bar {
+			position: relative;
+		}
+
+		.bars-container .hide-bar {
+			overflow: hidden;
+			max-width: var(--hp-bar-width);
+			position: absolute;
+			top: 0;
+			left: 0;
+		}
+
+		.bars-container img {
+			width: var(--hp-bar-width);
+		}
+
+
+
+		.render-info {
+			position: absolute;
+			top: 140px;
+			left: 20px;
+			color: white;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+
+
 		.mini-map {
 			margin: auto;
 			margin-top: 0;
@@ -148,12 +176,21 @@
 <body>
 	<div class="ui">
 		<header>
-			<div class="render-info">
-				<div>
-					<span id="fps">0</span><span> FPS</span>
+			<div class="bars-container">
+				<div class="hp-bar">
+					<img src="/HP_Bar/bg.png" class="hp-bar-bg">
+					<div class="hide-bar" id="hide-bar-dark-red">
+						<img src="/HP_Bar/dark red.png" class="hp-bar-dark-red">
+					</div>
+					<div class="hide-bar" id="hide-bar-red">
+						<img src="/HP_Bar/red.png" class="hp-bar-red">
+					</div>
 				</div>
-				<div>
-					<span id="render-time">0</span><span> ms</span>
+				<div class="endurance-bar">
+					<img src="/HP_Bar/bg.png" class="hp-bar-bg">
+					<div class="hide-bar" id="hide-bar-green">
+						<img src="/HP_Bar/green.png" class="hp-bar-green">
+					</div>
 				</div>
 			</div>
 			<div class="debug-tools-dropdown">
@@ -167,6 +204,14 @@
 				<div class="debug-tools-sidebar"></div>
 			</div>
 		</header>
+		<div class="render-info">
+			<div>
+				<span id="fps">0</span><span> FPS</span>
+			</div>
+			<div>
+				<span id="render-time">0</span><span> ms</span>
+			</div>
+		</div>
 		<canvas class="mini-map"></canvas>
 	</div>
 	<script type="module" src="/src/main.ts"></script>

@@ -63,6 +63,8 @@ export default class Game {
         this.currentPlayer.isRun = Core.inputManager.pressed.has('shift');
         this.currentPlayer.move(dirMove);
 
+        if(this.currentPlayer instanceof Runner && Core.inputManager.clicked.has('f')) this.currentPlayer.getDamage(30);
+
         if (this.currentPlayer instanceof Minotaur) {
             if (Core.inputManager.clicked.has(' ')) this.currentPlayer.dash();
             if (Core.inputManager.clicked.has('e')) this.currentPlayer.attack();
@@ -75,12 +77,12 @@ export default class Game {
         if (Core.inputManager.clicked.has('q')) {
             this.index = (this.index - 1 + this.players.length) % this.players.length;
             this.currentPlayer = this.players[this.index];
-            Core.emitter.emit('change-current-player');
+            Core.emitter.emit('change-current-player', this.currentPlayer);
         }
         if (Core.inputManager.clicked.has('e')) {
             this.index = (this.index + 1) % this.players.length;
             this.currentPlayer = this.players[this.index];
-            Core.emitter.emit('change-current-player');
+            Core.emitter.emit('change-current-player', this.currentPlayer);
         }
 
         if (this.currentPlayer != this.minotaurAI?.minotaur) this.controlCurrentPlayer();
