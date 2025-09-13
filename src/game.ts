@@ -6,6 +6,7 @@ import Minotaur from "./players/minotaur";
 import Runner from "./players/runner";
 import Core from "./core";
 import AI from "./players/ai";
+import Item from "./items/item";
 
 export default class Game {
     world: World;
@@ -30,7 +31,6 @@ export default class Game {
     }
 
     init() {
-
         for (let i = 0; i < 7; i++) {
             this.createPlayer();
         }
@@ -38,48 +38,48 @@ export default class Game {
 
         this.index = 0;
         this.currentPlayer = this.players[this.index];
+        Core.emitter.emit('change-current-player', this.currentPlayer);
+
+        new Item(Vec.fromObj(this.randomMazePosition()));
     }
 
     createPlayer(isMinotaur = false) {
         const player = isMinotaur ? new Minotaur() : new Runner();
         player.init(this.world);
-        player.body.position = this.randomMazePosition().toArray();
+        player.body.position = this.maze.mazeToWorld(this.randomMazePosition()).toArray();
         if (isMinotaur) this.minotaurAI = new AI(player as Minotaur);
         this.players.push(player);
         return player;
     }
 
     randomMazePosition() {
-        const randomPosition = this.maze.openedPlates[Math.floor(Math.random() * this.maze.openedPlates.length)];
-        return this.maze.mazeToWorld(randomPosition);
+        return this.maze.openedPlates[Math.floor(Math.random() * this.maze.openedPlates.length)];
     }
 
     controlCurrentPlayer() {
         const dirMove = new Vec(
-            Core.inputManager.pressed.has('a') ? -1 : Core.inputManager.pressed.has('d') ? 1 : 0,
-            Core.inputManager.pressed.has('w') ? -1 : Core.inputManager.pressed.has('s') ? 1 : 0
+            Core.inputManager.pressed.has('KeyA') ? -1 : Core.inputManager.pressed.has('KeyD') ? 1 : 0,
+            Core.inputManager.pressed.has('KeyW') ? -1 : Core.inputManager.pressed.has('KeyS') ? 1 : 0
         ).normalizeLocal();
 
-        this.currentPlayer.isRun = Core.inputManager.pressed.has('shift');
+        this.currentPlayer.isRun = Core.inputManager.pressed.has('ShiftLeft');
         this.currentPlayer.move(dirMove);
 
-        if(this.currentPlayer instanceof Runner && Core.inputManager.clicked.has('f')) this.currentPlayer.getDamage(30);
-
         if (this.currentPlayer instanceof Minotaur) {
-            if (Core.inputManager.clicked.has(' ')) this.currentPlayer.dash();
-            if (Core.inputManager.clicked.has('e')) this.currentPlayer.attack();
+            if (Core.inputManager.clicked.has('Space')) this.currentPlayer.dash();
+            if (Core.inputManager.clicked.has('KeyE')) this.currentPlayer.attack();
         }
     }
 
     private fixedTimeStep = 1 / 60; // 60 FPS
     private maxSubSteps = 10;
     update(dt: number) {
-        if (Core.inputManager.clicked.has('q')) {
+        if (Core.inputManager.clicked.has('KeyQ')) {
             this.index = (this.index - 1 + this.players.length) % this.players.length;
             this.currentPlayer = this.players[this.index];
             Core.emitter.emit('change-current-player', this.currentPlayer);
         }
-        if (Core.inputManager.clicked.has('e')) {
+        if (Core.inputManager.clicked.has('KeyE')) {
             this.index = (this.index + 1) % this.players.length;
             this.currentPlayer = this.players[this.index];
             Core.emitter.emit('change-current-player', this.currentPlayer);

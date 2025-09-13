@@ -10,7 +10,6 @@ export default class Renderer {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private vision!: VisionLayer;
-    private inited = false;
     private frameCount = 0;
     private lastTime = performance.now();
 
@@ -56,8 +55,6 @@ export default class Renderer {
             this.vision.render();
             ctx.drawImage(this.vision.canvas, 0, 0, Core.game.worldWidth, Core.game.worldHeight)
         }, 30);
-
-        this.inited = true;
     }
 
     start() {
@@ -88,7 +85,6 @@ export default class Renderer {
     }
 
     render() {
-        if (!this.inited) return;
         this.ctx.imageSmoothingEnabled = false;
         const start = performance.now();
 

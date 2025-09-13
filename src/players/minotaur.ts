@@ -3,9 +3,9 @@ import Vec from "../vector";
 import Player from "./player";
 import hornsImgUrl from "/horns.png";
 import Runner from "./runner";
-import { loadImage } from "../utils";
 import Timer from "../timer";
 import Core from "../core";
+import Sprite from "../sprite";
 
 export default class Minotaur extends Player {
     damage = 10;
@@ -16,12 +16,12 @@ export default class Minotaur extends Player {
     private dashDir = new Vec();
     private dashRunSpeed: number;
 
-    private attachCooldownTimer = new Timer(500);
+    private attackCooldownTimer = new Timer(500);
     private dashCooldownTimer = new Timer(2000);
     private dashTimer = new Timer(0);
 
     private attackShape: Box;
-    private hornsSprite?: HTMLImageElement;
+    private hornsSprite?: Sprite;
 
     // промінь для перевірки стін перед мінотавром під час ривка
     private raycastResult = new RaycastResult();
@@ -39,14 +39,12 @@ export default class Minotaur extends Player {
         this.dashRunSpeed = this.speed * 2.5;
         this.bodyColor = 'rgba(143, 50, 0, 1)';
         this.bodyBorderColor = '#642300ff';
+        this.invulnerabilityTimer.duration = 0;
         
         this.attackShape = new Box({
             width: this.radius / 2,
             height: this.radius * 2
         });
-
-        loadImage(hornsImgUrl)
-            .then(s => this.hornsSprite = s);
     }
 
     init(world: World) {
@@ -55,11 +53,18 @@ export default class Minotaur extends Player {
         world.on("beginContact", (evt: any) => {
             const { bodyA, bodyB } = evt;
 
-            if (bodyA.userData instanceof Minotaur && bodyB.userData instanceof Runner)
-                this.collisionWithRunner(bodyB.userData as Runner);
-            if (bodyB.userData instanceof Minotaur && bodyA.userData instanceof Runner)
-                this.collisionWithRunner(bodyA.userData as Runner);
+            if (bodyA.classData instanceof Minotaur && bodyB.classData instanceof Runner)
+                this.collisionWithRunner(bodyB.classData as Runner);
+            if (bodyB.classData instanceof Minotaur && bodyA.classData instanceof Runner)
+                this.collisionWithRunner(bodyA.classData as Runner);
         });
+
+        this.hornsSprite = Sprite.createByUrl(hornsImgUrl,
+            {
+                angle: Math.PI / 2
+            }
+        )
+        this.sprite.addChild(this.hornsSprite);
     }
 
     collisionWithRunner(runner: Runner) {
@@ -83,8 +88,8 @@ export default class Minotaur extends Player {
 
 
     attack() {
-        if(!this.attachCooldownTimer.isElapsed()) return;
-        this.attachCooldownTimer.reset();
+        if(!this.attackCooldownTimer.isElapsed()) return;
+        this.attackCooldownTimer.reset();
         
         const offset = new Vec(this.radius * 2, 0);
         offset.setAngle(this.body.angle);
@@ -160,21 +165,14 @@ export default class Minotaur extends Player {
         super.move(this.dashDir, this.dashRunSpeed);
     }
 
-    render(ctx: CanvasRenderingContext2D): void {
+    render(ctx: CanvasRenderingContext2D) {
         if (!this.sprite) return;
 
         const [x, y] = this.body.position;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(this.body.angle);
-        ctx.drawImage(this.sprite, -this.sprite.width / 2, -this.sprite.height / 2);
-
-        if (this.hornsSprite) {
-            ctx.save();
-            ctx.rotate(Math.PI / 2);
-            ctx.drawImage(this.hornsSprite, -this.hornsSprite.width / 2, -this.hornsSprite.height / 2);
-            ctx.restore();
-        }
-        ctx.restore();
+        this.sprite.x = x;
+        this.sprite.y = y;
+        this.sprite.angle = this.body.angle;
+        if(this.isDead) this.sprite.filter = "grayscale(100%)"; // робить зображення сірим
+        this.sprite.render(ctx);
     }
 }

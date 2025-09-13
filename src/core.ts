@@ -1,5 +1,5 @@
 import type Behaviour from "./baseBehaviour";
-import EventEmitter from "./EventEmitter";
+import EventEmitter from "./eventEmitter";
 import type Game from "./game";
 import type InputManager from "./inputManager";
 import type Renderer from "./renderer";
@@ -14,7 +14,7 @@ export default class Core {
     static debugTools = {
         useTools: true,
         game: {
-            collisions: true,
+            collisions: false,
             fastSpeed: true
         },
         render: {

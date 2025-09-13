@@ -3,6 +3,7 @@ import Vec from "./vector";
 import Runner from "./players/runner";
 import Core from "./core";
 import Behaviour from "./baseBehaviour";
+import { FOW_RAYCAST_GROUP } from "./constants";
 
 export default class VisionLayer extends Behaviour {
     canvas: HTMLCanvasElement;
@@ -16,7 +17,7 @@ export default class VisionLayer extends Behaviour {
         from: [0, 0],
         to: [0, 0],
         mode: Ray.CLOSEST,
-        collisionGroup: 0x0008
+        collisionGroup: FOW_RAYCAST_GROUP
     });
     private hitPoint = vec2.create();
     private fieldOfView: Vec[];

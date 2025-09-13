@@ -1,68 +1,76 @@
-import Core from "../core";
+import type { World } from "p2";
 import ParticleSystem from "../particleSystem";
-import Timer from "../timer";
-import { clamp, loadImage } from "../utils";
+import Sprite from "../sprite";
+import type { InventoryItem } from "../types/InventoryItem";
+import { clamp } from "../utils";
 import Vec from "../vector";
 import Player from "./player";
+import swordUrl from "/inventory_items/Sword.png";
+import Core from "../core";
+import Item from "../items/item";
 
 export default class Runner extends Player {
-    maxHp = 100;
-    hp = this.maxHp;
-    isDead = false;
-    invulnerabilityTimer = new Timer(1000);
-    damageTimer = new Timer(1000);
-    damageReductionSpeed = 15;
-    damageReductionCurrentValue = this.maxHp;
-
+    inventory = new Set<InventoryItem>;
     torchAttenuation = 0;
     torchAttenuationFactor = 0;
 
     private torchAttenuationSpeed = 5;
-    private torch: ParticleSystem;
-    private torchSprite?: HTMLImageElement;
+    private torch = new ParticleSystem();
     private torchOffset = new Vec(9, 5);
+    private torchSprite!: Sprite;
+    private swordSprite!: Sprite;
 
-    constructor() {
-        super();
-        this.torch = new ParticleSystem();
+    init(world: World): void {
+        super.init(world);
 
-        this.getRenderTorchSprite()
-            .then(s => this.torchSprite = s);
+        this.torchSprite = Sprite.createByContext(
+            this.renderTorch.bind(this),
+            {
+                x: this.torchOffset.x,
+                y: this.torchOffset.y,
+                width: 2,
+                height: 9,
+                angle: -100 * Vec.DEGTORAD,
+                anchorY: 1
+            }
+        );
+        this.sprite.addChild(this.torchSprite, false);
+
+        this.swordSprite = Sprite.createByUrl(swordUrl,
+            {
+                x: 2,
+                y: 5,
+                angle: 10 * Vec.DEGTORAD,
+                anchorX: .12,
+                anchorY: .81,
+                visible: false
+            }
+        )
+        this.sprite.addChild(this.swordSprite, false);
+
+        this.getItem("Sword");
+        this.initCollisions();
     }
 
-    canGetDamage() {
-        return !this.isDead && (this.invulnerabilityTimer.isElapsed());
+    getItem(item: InventoryItem) {
+        if(this.inventory.has(item)) return;
+
+        this.inventory.add(item);
+        this.swordSprite.visible = this.inventory.has("Sword");
+        Core.emitter.emit('inventory-get-item', this);
     }
 
-    getDamage(damage: number) {
-        if (!this.canGetDamage() || damage <= 0) return;
-
-        this.invulnerabilityTimer.reset();
-        this.damageTimer.reset();
-        const incurredDamage = Math.min(damage, this.hp);
-        this.hp -= incurredDamage;
-        Core.emitter.emit('player-damaged', this, incurredDamage);
-
-        if (this.hp <= 0) {
-            this.isDead = true;
-            Core.emitter.emit('player-was-killed', this);
-        }
-    }
-
-    move(dir: Vec) {
-        if (this.isDead) return;
-        super.move(dir);
+    removeItem(item: InventoryItem) {
+        if(!this.inventory.has(item)) return;
+        
+        this.inventory.delete(item);
+        this.swordSprite.visible = this.inventory.has("Sword");
+        Core.emitter.emit('inventory-remove-item', this);
     }
 
     update(dt: number) {
         super.update(dt);
         this.updateTorch(dt);
-
-        this.damageReductionCurrentValue = Math.max(this.damageReductionCurrentValue - dt * this.damageReductionSpeed, this.hp);
-    }
-
-    protected updateEndurance(dt: number): void {
-        super.updateEndurance(this.isDead ? -(dt / 3) : dt);
     }
 
     private updateTorch(dt: number) {
@@ -72,44 +80,61 @@ export default class Runner extends Player {
             this.torch.frequency = Math.max(this.torch.frequency - dt * 10, 0);
         }
 
-        const p = this.torchOffset.copy().setAngle(this.torchOffset.getAngle() + this.body.angle);
+        const offset = this.torchOffset.copy();
+        if (this.inventory.has("Sword")) offset.y *= -1;
+        const p = offset.setAngle(offset.getAngle() + this.body.angle);
         this.torch.origin.setArray(this.body.position).addLocal(p);
     }
 
+    private collisionWithItem(item: Item) {
+        Core.emitter.emit('start-trigger-item', item, this);
+    }
+
+    private endCollisionWithItem(item: Item) {
+        Core.emitter.emit('end-trigger-item', item, this);
+    }
+
+    private initCollisions() {
+        Core.game.world.on("beginContact", (evt: any) => {
+            const { bodyA, bodyB } = evt;
+
+            if (bodyA.classData instanceof Runner && bodyB.classData instanceof Item)
+                this.collisionWithItem(bodyB.classData as Item);
+            if (bodyB.classData instanceof Runner && bodyA.classData instanceof Item)
+                this.collisionWithItem(bodyA.classData as Item);
+        });
+
+        Core.game.world.on("endContact", (evt: any) => {
+            const { bodyA, bodyB } = evt;
+
+            if (bodyA.classData instanceof Runner && bodyB.classData instanceof Item)
+                this.endCollisionWithItem(bodyB.classData as Item);
+            if (bodyB.classData instanceof Runner && bodyA.classData instanceof Item)
+                this.endCollisionWithItem(bodyA.classData as Item);
+        });
+    }
+
     render(ctx: CanvasRenderingContext2D) {
-        if (!this.sprite || !this.torchSprite) return;
+        if (!this.sprite) return;
 
         const [x, y] = this.body.position;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(this.body.angle);
+        this.sprite.x = x;
+        this.sprite.y = y;
+        this.sprite.angle = this.body.angle;
+        if (this.isDead) this.sprite.filter = "grayscale(100%)"; // робить зображення сірим
 
-        ctx.save();
-        ctx.translate(this.torchOffset.x - 2.5, this.torchOffset.y + .5);
-        ctx.rotate(80 * Vec.DEGTORAD);
-        ctx.drawImage(this.torchSprite, -this.torchSprite.width / 2, -this.torchSprite.height / 2);
-        ctx.restore();
+        if (this.inventory.has("Sword")) {
+            this.torchSprite.y = -this.torchOffset.y;
+            this.torchSprite.flipAngle = true;
+        }
 
-        if (this.isDead) ctx.filter = "grayscale(100%)"; // робить зображення сірим
-        ctx.drawImage(this.sprite, -this.sprite.width / 2, -this.sprite.height / 2);
-        ctx.filter = "none";
-        ctx.restore();
+        this.sprite.render(ctx);
 
         this.torch.render(ctx);
     }
 
-    private async getRenderTorchSprite() {
-        if (this.torchSprite) return this.sprite;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 2;
-        canvas.height = 7;
-        const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-
+    private renderTorch(ctx: CanvasRenderingContext2D) {
         ctx.fillStyle = 'rgba(57, 33, 0, 1)'
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        this.torchSprite = await loadImage(canvas.toDataURL("image/png"));
-        return this.torchSprite;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     }
 }

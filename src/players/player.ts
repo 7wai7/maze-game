@@ -1,9 +1,12 @@
 import { Body, Circle, World } from "p2";
 import Vec from "../vector";
-import { clamp, loadImage } from "../utils";
+import { clamp } from "../utils";
 import Behaviour from "../baseBehaviour";
 import Core from "../core";
 import MiniMap from "./miniMap";
+import Timer from "../timer";
+import Sprite from "../sprite";
+import { PLAYER_GROUP, PLAYER_MASK } from "../constants";
 
 export default abstract class Player extends Behaviour {
     body!: Body;
@@ -13,6 +16,14 @@ export default abstract class Player extends Behaviour {
     mass = 1;
     miniMap = new MiniMap(this);
 
+    maxHp = 100;
+    hp = this.maxHp;
+    isDead = false;
+    damageTimer = new Timer(1000);
+    invulnerabilityTimer = new Timer(1000);
+    damageReductionSpeed = 15;
+    damageReductionCurrentValue = this.maxHp;
+
     maxEndurance = 100;
     endurance = this.maxEndurance;
     enduranceReductionSpeed = 40;
@@ -20,9 +31,9 @@ export default abstract class Player extends Behaviour {
 
     protected bodyColor = '#ffe5aeff';
     protected bodyBorderColor = '#92815bff';
-    protected sprite?: HTMLImageElement;
-    protected collisionGroup = 0x0002;
-    protected collisionMask = 0x0002 | 0x0004;
+    protected sprite!: Sprite;
+    protected collisionGroup = PLAYER_GROUP
+    protected collisionMask = PLAYER_MASK
 
     protected moveDir = new Vec();
     protected runSpeed: number;
@@ -46,7 +57,7 @@ export default abstract class Player extends Behaviour {
         }));
 
         world.addBody(this.body);
-        (this.body as any).userData = this;
+        (this.body as any).classData = this;
 
         Core.emitter.on('debug-collisions', () => {
             this.toggleCollisions();
@@ -54,13 +65,36 @@ export default abstract class Player extends Behaviour {
         Core.emitter.on('debug-useTools', () => {
             this.toggleCollisions();
         })
+        this.toggleCollisions();
 
-        this.getRenderSprite()
-            .then(s => this.sprite = s);
+        this.sprite = Sprite.createByContext(this.renderSprite.bind(this), { width: 30, height: 30 })
+
+        // this.getRenderSprite()
+        //     .then(s => this.sprite = s);
+    }
+
+    canGetDamage() {
+        return !this.isDead && this.invulnerabilityTimer.isElapsed();
+    }
+
+    getDamage(damage: number) {
+        if (!this.canGetDamage() || damage <= 0) return;
+
+        this.invulnerabilityTimer.reset();
+        this.damageTimer.reset();
+        const incurredDamage = Math.min(damage, this.hp);
+        this.hp -= incurredDamage;
+        Core.emitter.emit('player-damaged', this, incurredDamage);
+
+        if (this.hp <= 0) {
+            this.isDead = true;
+            Core.emitter.emit('player-was-killed', this);
+        }
     }
 
     move(dir: Vec, speed?: number) {
-        this.moveDir = dir;
+        if (this.isDead) return;
+        this.moveDir.setVec(dir);
         if (dir.x === 0 && dir.y === 0) return;
 
         const useTools = Core.debugTools.useTools && Core.debugTools.game.fastSpeed;
@@ -71,11 +105,12 @@ export default abstract class Player extends Behaviour {
 
     update(dt: number): void {
         this.updateEndurance(dt);
+        this.damageReductionCurrentValue = Math.max(this.damageReductionCurrentValue - dt * this.damageReductionSpeed, this.hp);
     }
 
     protected updateEndurance(dt: number) {
         const useTools = Core.debugTools.useTools && Core.debugTools.game.fastSpeed;
-        if (this.isRun && !useTools && (this.moveDir.x !== 0 || this.moveDir.y !== 0)) this.endurance -= dt * this.enduranceReductionSpeed;
+        if (this.isDead || this.isRun && !useTools && (this.moveDir.x !== 0 || this.moveDir.y !== 0)) this.endurance -= dt * this.enduranceReductionSpeed;
         else this.endurance += dt * this.enduranceRecoverySpeed;
         this.endurance = clamp(this.endurance, 0, this.maxEndurance);
     }
@@ -92,6 +127,33 @@ export default abstract class Player extends Behaviour {
                 shape.collisionMask = 0;
             }
         }
+    }
+
+
+
+
+    private renderSprite(ctx: CanvasRenderingContext2D) {
+        ctx.save();
+        ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
+        ctx.rotate(this.body.angle + Math.PI / 2);
+
+        // Малювання лівої руки
+        this.renderHand(ctx, true);
+
+        // Малювання правої руки
+        this.renderHand(ctx);
+
+        // Малювання персонажа
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2); // Основне коло (тіло)
+        ctx.fillStyle = this.bodyColor; // Колір тіла
+        ctx.fill();
+        ctx.strokeStyle = this.bodyBorderColor; // Темніший край
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.restore();
     }
 
     async getRenderSprite() {
@@ -124,8 +186,8 @@ export default abstract class Player extends Behaviour {
 
         ctx.restore();
 
-        this.sprite = await loadImage(canvas.toDataURL("image/png"));
-        return this.sprite;
+        // this.sprite = await loadImage(canvas.toDataURL("image/png"));
+        // return this.sprite;
     }
 
     private renderHand(ctx: CanvasRenderingContext2D, isLeft = false) {

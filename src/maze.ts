@@ -3,6 +3,7 @@ import brickWallImgUrl from "/brick-wall.jpg";
 import floorImgUrl from "/grey-stone.jpg";
 import Vec from "./vector";
 import { loadImage } from "./utils";
+import { WALL_GROUP, WALL_MASK } from "./constants";
 
 export default class Maze {
     rows: number;
@@ -13,8 +14,8 @@ export default class Maze {
     openedPlates: { x: number, y: number }[];
     wallPlates: { x: number, y: number }[];
     mazeScale: number;
-    brickWallImg: HTMLImageElement;
-    floorImg: HTMLImageElement;
+    brickWallImg!: HTMLImageElement;
+    floorImg!: HTMLImageElement;
     sprite?: HTMLImageElement;
 
     constructor(rows: number, cols: number) {
@@ -29,11 +30,6 @@ export default class Maze {
         this.openedPlates = [];
         this.wallPlates = [];
         this.mazeScale = 32;
-
-        this.brickWallImg = new Image();
-        this.brickWallImg.src = brickWallImgUrl;
-        this.floorImg = new Image();
-        this.floorImg.src = floorImgUrl;
     }
 
     generate() {
@@ -188,8 +184,8 @@ export default class Maze {
             const shape = new Box({
                 width: w,
                 height: h,
-                collisionGroup: 0x0004,
-                collisionMask: 0x0002 | 0x0008
+                collisionGroup: WALL_GROUP,
+                collisionMask: WALL_MASK
             })
 
             body.addShape(shape);
@@ -354,8 +350,8 @@ export default class Maze {
     async getRenderSprite() {
         if (this.sprite) return this.sprite;
 
-        await loadImage(brickWallImgUrl);
-        await loadImage(floorImgUrl);
+        this.brickWallImg = await loadImage(brickWallImgUrl);
+        this.floorImg = await loadImage(floorImgUrl);
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
