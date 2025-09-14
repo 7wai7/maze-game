@@ -3,7 +3,7 @@ import Vec from "./vector";
 import Runner from "./players/runner";
 import Core from "./core";
 import Behaviour from "./baseBehaviour";
-import { FOW_RAYCAST_GROUP } from "./constants";
+import { FOV_INDEX, FOW_RAYCAST_GROUP } from "./constants";
 import type Renderable from "./renderable/renderable";
 
 export default class VisionLayer extends Behaviour implements Renderable {
@@ -12,7 +12,7 @@ export default class VisionLayer extends Behaviour implements Renderable {
     raysCount = 180;
     fowRadius = 500;
     scaleFactor = .25;
-    zIndex = 30;
+    zIndex = FOV_INDEX;
 
     private raycastResult = new RaycastResult();
     private ray = new Ray({

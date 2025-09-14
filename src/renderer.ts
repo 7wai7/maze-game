@@ -1,7 +1,7 @@
 import Camera from "./camera";
 import VisionLayer from "./visionLayer";
 import Core from "./core";
-import Sprite from "./sprite";
+import Sprite from "./renderable/sprite";
 import type Renderable from "./renderable/renderable";
 
 export default class Renderer {
@@ -41,13 +41,6 @@ export default class Renderer {
         new VisionLayer();
         Core.game.maze.renderSprite();
         Core.game.maze.renderNumbers();
-
-        Core.emitter.on('debug-useTools', () => {
-            Core.game.maze.spriteNumbers.visible = Core.debugTools.useTools && Core.debugTools.render.mazeNumbers;
-        })
-        Core.emitter.on('debug-mazeNumbers', () => {
-            Core.game.maze.spriteNumbers.visible = Core.debugTools.useTools && Core.debugTools.render.mazeNumbers;
-        })
         this.inited = true;
     }
 
@@ -84,8 +77,8 @@ export default class Renderer {
     }
 
     render() {
-        if(!this.inited) return;
-        
+        if (!this.inited) return;
+
         this.ctx.imageSmoothingEnabled = false;
         const start = performance.now();
 
@@ -94,11 +87,18 @@ export default class Renderer {
         this.rootSprite.updateWorldTransform();
 
         if (this.isModifiedQueue) {
-            this.renderQueue.sort((a, b) => a.zIndex - b.zIndex);
+            this.renderQueue.sort((a, b) => b.zIndex - a.zIndex);
             this.isModifiedQueue = false;
         }
 
         for (const s of this.renderQueue) s.render(this.ctx);
+        for (let i = this.renderQueue.length - 1; i >= 0; i--) {
+            const s = this.renderQueue[i];
+            s.render(this.ctx);
+            if (s.isDestroyed) {
+                this.renderQueue.splice(i, 1);
+            }
+        }
 
         this.camera.reset(this.ctx);
 

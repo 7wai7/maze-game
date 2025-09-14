@@ -1,6 +1,6 @@
-import Core from "./core";
-import type Renderable from "./renderable/renderable";
-import { loadImage } from "./utils";
+import Core from "../core";
+import type Renderable from "./renderable";
+import { loadImage } from "../utils";
 
 export default class Sprite implements Renderable {
     img?: HTMLImageElement;
@@ -25,10 +25,11 @@ export default class Sprite implements Renderable {
     flipAngle = false;
     visible = true;
     zIndex = 0;
+    isDestroyed = false;
 
     private isLoaded = false;
     private parent?: Sprite;
-    children: Sprite[] = [];
+    private children: Sprite[] = [];
 
     constructor(isRoot = false) {
         if (isRoot) return;
@@ -79,6 +80,10 @@ export default class Sprite implements Renderable {
         }
     }
 
+    destroy(): void {
+        this.isDestroyed = true;
+    }
+
     prePender() {}
 
     render(ctx: CanvasRenderingContext2D) {
@@ -126,7 +131,6 @@ export default class Sprite implements Renderable {
             child.parent = undefined;
         }
     }
-
 
     updateWorldTransform() {
         if (this.parent) {

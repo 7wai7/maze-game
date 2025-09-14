@@ -3,8 +3,9 @@ import brickWallImgUrl from "/brick-wall.jpg";
 import floorImgUrl from "/grey-stone.jpg";
 import Vec from "./vector";
 import { loadImage } from "./utils";
-import { WALL_GROUP, WALL_MASK } from "./constants";
-import Sprite from "./sprite";
+import { BG_INDEX, WALL_GROUP, WALL_MASK } from "./constants";
+import Sprite from "./renderable/sprite";
+import Core from "./core";
 
 export default class Maze {
     rows: number;
@@ -332,8 +333,10 @@ export default class Maze {
 
 
     renderNumbers() {
-        this.spriteNumbers = Sprite.createByContext(
-            (ctx) => {
+        Core.renderer.addRenderable({
+            render: (ctx) => {
+                if(!Core.debugTools.useTools || !Core.debugTools.render.mazeNumbers) return;
+
                 const cellSize = this.mazeScale;
 
                 for (let y = 0; y < this.rows; y++) {
@@ -350,13 +353,8 @@ export default class Maze {
                     }
                 }
             },
-            {
-                width: this.cols * this.mazeScale,
-                height: this.rows * this.mazeScale,
-                anchorX: 0,
-                anchorY: 0
-            }
-        )
+            zIndex: BG_INDEX + 1
+        })
     }
 
     async renderSprite() {
@@ -382,12 +380,14 @@ export default class Maze {
                         }
                     }
                 }
+                ctx.imageSmoothingEnabled = true;
             },
             {
                 width: this.cols * this.mazeScale,
                 height: this.rows * this.mazeScale,
                 anchorX: 0,
-                anchorY: 0
+                anchorY: 0,
+                zIndex: BG_INDEX
             }
         )
 

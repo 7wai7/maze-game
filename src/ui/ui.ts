@@ -1,5 +1,6 @@
 import HPBars from "./hpBars";
 import HurtOverlay from "./hurtOverlay";
+import Interaction from "./interaction";
 import Inventory from "./inventory";
 import DebugTools from "./sidebar";
 
@@ -16,6 +17,7 @@ export default function initUI() {
     new HPBars();
     new HurtOverlay();
     Inventory();
+    Interaction();
     resizeMiniMap();
     window.addEventListener('resize', resizeMiniMap);
 }

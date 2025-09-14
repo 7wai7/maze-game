@@ -40,7 +40,8 @@ export default class Game {
         this.currentPlayer = this.players[this.index];
         Core.emitter.emit('change-current-player', this.currentPlayer);
 
-        new Item(Vec.fromObj(this.randomMazePosition()));
+        new Item(Vec.fromObj(this.randomMazePosition()), "Key");
+        new Item(Vec.fromObj(this.randomMazePosition()), "Sword");
     }
 
     createPlayer(isMinotaur = false) {
@@ -69,21 +70,25 @@ export default class Game {
             if (Core.inputManager.clicked.has('Space')) this.currentPlayer.dash();
             if (Core.inputManager.clicked.has('KeyE')) this.currentPlayer.attack();
         }
+        
+        if (this.currentPlayer instanceof Runner) {
+            if(Core.inputManager.clicked.has("KeyE")) this.currentPlayer.pickUpItem();
+        }
     }
 
     private fixedTimeStep = 1 / 60; // 60 FPS
     private maxSubSteps = 10;
     update(dt: number) {
-        if (Core.inputManager.clicked.has('KeyQ')) {
-            this.index = (this.index - 1 + this.players.length) % this.players.length;
-            this.currentPlayer = this.players[this.index];
-            Core.emitter.emit('change-current-player', this.currentPlayer);
-        }
-        if (Core.inputManager.clicked.has('KeyE')) {
-            this.index = (this.index + 1) % this.players.length;
-            this.currentPlayer = this.players[this.index];
-            Core.emitter.emit('change-current-player', this.currentPlayer);
-        }
+        // if (Core.inputManager.clicked.has('KeyQ')) {
+        //     this.index = (this.index - 1 + this.players.length) % this.players.length;
+        //     this.currentPlayer = this.players[this.index];
+        //     Core.emitter.emit('change-current-player', this.currentPlayer);
+        // }
+        // if (Core.inputManager.clicked.has('KeyE')) {
+        //     this.index = (this.index + 1) % this.players.length;
+        //     this.currentPlayer = this.players[this.index];
+        //     Core.emitter.emit('change-current-player', this.currentPlayer);
+        // }
 
         if (this.currentPlayer != this.minotaurAI?.minotaur) this.controlCurrentPlayer();
 

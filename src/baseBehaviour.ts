@@ -10,5 +10,4 @@ export default abstract class Behaviour {
 
     update?(dt: number): void;
     postUpdate?(dt: number): void;
-    // render?(ctx: CanvasRenderingContext2D): void;
 }

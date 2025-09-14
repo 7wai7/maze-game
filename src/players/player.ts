@@ -5,8 +5,8 @@ import Behaviour from "../baseBehaviour";
 import Core from "../core";
 import MiniMap from "./miniMap";
 import Timer from "../timer";
-import Sprite from "../sprite";
-import { PLAYER_GROUP, PLAYER_MASK } from "../constants";
+import Sprite from "../renderable/sprite";
+import { PLAYER_GROUP, PLAYER_INDEX, PLAYER_MASK, WALL_GROUP } from "../constants";
 
 export default abstract class Player extends Behaviour {
     body!: Body;
@@ -67,7 +67,7 @@ export default abstract class Player extends Behaviour {
         })
         this.toggleCollisions();
 
-        this.sprite = Sprite.createByContext(this.renderSprite.bind(this), { width: 30, height: 30, zIndex: 10 })
+        this.sprite = Sprite.createByContext(this.renderSprite.bind(this), { width: 30, height: 30, zIndex: PLAYER_INDEX })
     }
 
     canGetDamage() {
@@ -117,11 +117,9 @@ export default abstract class Player extends Behaviour {
         const value = !Core.debugTools.useTools || Core.debugTools.game.collisions;
         for (const shape of this.body.shapes) {
             if (value) {
-                shape.collisionGroup = this.collisionGroup;
                 shape.collisionMask = this.collisionMask;
             } else {
-                shape.collisionGroup = 0;
-                shape.collisionMask = 0;
+                shape.collisionMask = this.collisionMask & ~WALL_GROUP;
             }
         }
     }

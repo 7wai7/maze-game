@@ -5,7 +5,7 @@ import Vec from "../vector";
 import Runner from "./runner";
 import type Minotaur from "./minotaur";
 import Timer from "../timer";
-import RenderCallback from "../renderable/renderCallback";
+import { FOW_RAYCAST_GROUP } from "../constants";
 
 export default class AI extends Behaviour {
     minotaur: Minotaur;
@@ -24,7 +24,7 @@ export default class AI extends Behaviour {
         from: [0, 0],
         to: [0, 0],
         mode: Ray.CLOSEST,
-        collisionGroup: 0x0008
+        collisionGroup: FOW_RAYCAST_GROUP
     });
 
     constructor(minotaur: Minotaur) {
@@ -34,8 +34,9 @@ export default class AI extends Behaviour {
             this.createMazePath();
         })
 
-        new RenderCallback(
-            (ctx) => {
+
+        Core.renderer.addRenderable({
+            render: (ctx) => {
                 if (!Core.debugTools.useTools || !Core.debugTools.render.aiWay) return;
                 if (!this.mazePath || this.mazePath.length === 0) return;
 
@@ -63,8 +64,8 @@ export default class AI extends Behaviour {
 
                 ctx.restore();
             },
-            3
-        )
+            zIndex: 3
+        });
     }
 
     createMazePath(target?: Vec | null) {

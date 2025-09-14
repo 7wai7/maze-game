@@ -1,6 +1,6 @@
 import type { World } from "p2";
 import ParticleSystem from "../particleSystem";
-import Sprite from "../sprite";
+import Sprite from "../renderable/sprite";
 import type { InventoryItem } from "../types/InventoryItem";
 import { clamp } from "../utils";
 import Vec from "../vector";
@@ -8,6 +8,7 @@ import Player from "./player";
 import swordUrl from "/inventory_items/Sword.png";
 import Core from "../core";
 import Item from "../items/item";
+import { FIRE_INDEX, PLAYER_INDEX } from "../constants";
 
 export default class Runner extends Player {
     inventory = new Set<InventoryItem>;
@@ -15,10 +16,11 @@ export default class Runner extends Player {
     torchAttenuationFactor = 0;
 
     private torchAttenuationSpeed = 5;
-    private torch = new ParticleSystem({ zIndex: 30 });
+    private torch = new ParticleSystem({ zIndex: FIRE_INDEX });
     private torchOffset = new Vec(9, 5);
     private torchSprite!: Sprite;
     private swordSprite!: Sprite;
+    private triggeregItem?: Item;
 
     init(world: World): void {
         super.init(world);
@@ -32,7 +34,7 @@ export default class Runner extends Player {
                 height: 9,
                 angle: -100 * Vec.DEGTORAD,
                 anchorY: 1,
-                zIndex: 9
+                zIndex: PLAYER_INDEX - 1
             }
         );
         this.sprite.addChild(this.torchSprite);
@@ -45,14 +47,19 @@ export default class Runner extends Player {
                 anchorX: .12,
                 anchorY: .81,
                 visible: false,
-                zIndex: 9
+                zIndex: PLAYER_INDEX - 1
             }
         )
         this.sprite.addChild(this.swordSprite);
 
-        this.getItem("Sword");
         this.initCollisions();
         this.sprite.prePender = this.preRenderSprite.bind(this);
+    }
+
+    pickUpItem() {
+        if(!this.triggeregItem) return;
+        this.getItem(this.triggeregItem.item);
+        this.triggeregItem.destroy();
     }
 
     getItem(item: InventoryItem) {
@@ -90,10 +97,12 @@ export default class Runner extends Player {
     }
 
     private collisionWithItem(item: Item) {
+        this.triggeregItem = item;
         Core.emitter.emit('start-trigger-item', item, this);
     }
 
     private endCollisionWithItem(item: Item) {
+        this.triggeregItem = undefined;
         Core.emitter.emit('end-trigger-item', item, this);
     }
 

@@ -32,23 +32,26 @@ export default function Inventory() {
 
 	Core.emitter.on("inventory-get-item", (player: Runner) => {
 		if (Core.game.currentPlayer !== player) return;
+		inventoryContainerEl.style.display = player.inventory.size > 0 ? 'block' : 'none';
 		renderContainer(player.inventory);
 	});
 	Core.emitter.on("inventory-remove-item", (player: Runner) => {
 		if (Core.game.currentPlayer !== player) return;
+		inventoryContainerEl.style.display = player.inventory.size > 0 ? 'block' : 'none';
 		renderContainer(player.inventory);
 	});
 
 	Core.emitter.on('change-current-player', (player: Player) => {
 		if (player instanceof Runner) {
 			renderContainer(player.inventory);
-			inventoryContainerEl.style.display = 'block';
+			inventoryContainerEl.style.display = player.inventory.size > 0 ? 'block' : 'none';
 		}
 		else inventoryContainerEl.style.display = 'none';
 	})
 
-	if (Core.game.currentPlayer instanceof Runner) {
-		renderContainer(Core.game.currentPlayer.inventory);
-		inventoryContainerEl.style.display = 'block';
+	const p = Core.game.currentPlayer;
+	if (p instanceof Runner) {
+		renderContainer(p.inventory);
+		inventoryContainerEl.style.display = p.inventory.size > 0 ? 'block' : 'none';
 	}
 }

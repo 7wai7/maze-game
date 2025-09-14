@@ -5,7 +5,8 @@ import hornsImgUrl from "/horns.png";
 import Runner from "./runner";
 import Timer from "../timer";
 import Core from "../core";
-import Sprite from "../sprite";
+import Sprite from "../renderable/sprite";
+import { PLAYER_INDEX } from "../constants";
 
 export default class Minotaur extends Player {
     damage = 10;
@@ -62,7 +63,7 @@ export default class Minotaur extends Player {
         this.hornsSprite = Sprite.createByUrl(hornsImgUrl,
             {
                 angle: Math.PI / 2,
-                zIndex: 11
+                zIndex: PLAYER_INDEX + 1
             }
         )
         this.sprite.addChild(this.hornsSprite);
