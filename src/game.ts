@@ -31,7 +31,7 @@ export default class Game {
     }
 
     init() {
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < 1; i++) {
             this.createPlayer();
         }
         this.createPlayer(true);

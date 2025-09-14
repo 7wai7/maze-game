@@ -21,16 +21,20 @@ function getRandomRangeValue([min, max]: [number, number]): number {
 }
 
 export default class Particle {
-    position: Vec;
-    velocity: Vec;
-    life: number;  // залишилось часу (секунди)
-    size: number;
-    opacity: number;
-    img: HTMLCanvasElement;
+    position!: Vec;
+    velocity!: Vec;
+    life!: number;  // залишилось часу (секунди)
+    size!: number;
+    opacity!: number;
+    img!: HTMLCanvasElement;
 
-    private maxLife: number;
+    private maxLife!: number;
 
     constructor(values: ParticleValuesRanges) {
+        this.updateValues(values);
+    }
+
+    updateValues(values: ParticleValuesRanges) {
         this.position = Array.isArray(values.position) ? getRandomRangeVec(values.position) : values.position;
         this.velocity = Array.isArray(values.velocity) ? getRandomRangeVec(values.velocity) : values.velocity;
         this.life = Array.isArray(values.life) ? getRandomRangeValue(values.life) : values.life;
@@ -42,6 +46,7 @@ export default class Particle {
     }
 
     update(dt: number) {
+        if (this.life <= 0) return;
         this.life -= dt;
         this.position.addLocal(this.velocity.scale(dt * 60));
     }
@@ -49,9 +54,6 @@ export default class Particle {
 
     render(ctx: CanvasRenderingContext2D) {
         if (this.life <= 0) return;
-
-
-
         const t = this.life / this.maxLife;
 
         ctx.save();

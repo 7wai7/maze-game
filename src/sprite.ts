@@ -1,6 +1,8 @@
+import Core from "./core";
+import type Renderable from "./renderable/renderable";
 import { loadImage } from "./utils";
 
-export default class Sprite {
+export default class Sprite implements Renderable {
     img?: HTMLImageElement;
     width = 0;
     height = 0;
@@ -11,14 +13,28 @@ export default class Sprite {
     filter = "none";
     anchorX = 0.5;
     anchorY = 0.5;
-    flipX = false;
-    flipY = false;
+    scaleX = 1;
+    scaleY = 1;
+
+    worldX = 0;
+    worldY = 0;
+    worldAngle = 0;
+    worldScaleX = 1;
+    worldScaleY = 1;
+
     flipAngle = false;
     visible = true;
+    zIndex = 0;
 
     private isLoaded = false;
-    private childrenBehind: Sprite[] = [];
-    private childrenFront: Sprite[] = [];
+    private parent?: Sprite;
+    children: Sprite[] = [];
+
+    constructor(isRoot = false) {
+        if (isRoot) return;
+        Core.renderer.rootSprite.addChild(this);
+        Core.renderer.addRenderable(this);
+    }
 
     static createByUrl(
         url: string,
@@ -63,23 +79,19 @@ export default class Sprite {
         }
     }
 
+    prePender() {}
+
     render(ctx: CanvasRenderingContext2D) {
+        this.prePender();
         if (!this.img || !this.isLoaded || !this.visible) return;
 
         ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.flipAngle ? Math.PI - this.angle : this.angle);
-
-        if (this.flipX || this.flipY) {
-            ctx.scale(this.flipX ? -1 : 1, this.flipY ? -1 : 1);
-        }
+        ctx.translate(this.worldX, this.worldY);
+        ctx.rotate(this.worldAngle);
+        ctx.scale(this.worldScaleX, this.worldScaleY);
 
         ctx.globalAlpha = this.alpha;
         ctx.filter = this.filter;
-
-        for (const s of this.childrenBehind) {
-            s.render(ctx);
-        }
 
         ctx.drawImage(
             this.img,
@@ -89,20 +101,62 @@ export default class Sprite {
             this.height
         );
 
-        for (const s of this.childrenFront) {
-            s.render(ctx);
-        }
-
         ctx.restore();
     }
 
-    addChild(child: Sprite, isFront = true) {
-        isFront ? this.childrenFront.push(child) : this.childrenBehind.push(child);
+    setParent(parent: Sprite) {
+        if (this.parent) {
+            this.parent.removeChild(this);
+        }
+        this.parent = parent;
+        parent.children.push(this);
+    }
+
+    addChild(child: Sprite) {
+        if (child.parent) {
+            child.parent.removeChild(child);
+        }
+        child.parent = this;
+        this.children.push(child);
     }
 
     removeChild(child: Sprite) {
-        this.childrenBehind = this.childrenBehind.filter((f) => f === child);
-        this.childrenFront = this.childrenFront.filter((f) => f === child);
+        this.children = this.children.filter((f) => f !== child);
+        if (child.parent === this) {
+            child.parent = undefined;
+        }
+    }
+
+
+    updateWorldTransform() {
+        if (this.parent) {
+            // беремо трансформацію батька
+            const cos = Math.cos(this.parent.worldAngle);
+            const sin = Math.sin(this.parent.worldAngle);
+
+            // застосовуємо обертання + масштаб батька
+            const localX = this.x * this.parent.worldScaleX;
+            const localY = this.y * this.parent.worldScaleY;
+
+            this.worldX = this.parent.worldX + cos * localX - sin * localY;
+            this.worldY = this.parent.worldY + sin * localX + cos * localY;
+
+            // кут та масштаб наслідуються
+            this.worldAngle = this.parent.worldAngle + (this.flipAngle ? Math.PI - this.angle : this.angle);
+            this.worldScaleX = this.parent.worldScaleX * this.scaleX;
+            this.worldScaleY = this.parent.worldScaleY * this.scaleY;
+        } else {
+            // якщо батька нема → світові = локальні
+            this.worldX = this.x;
+            this.worldY = this.y;
+            this.worldAngle = this.flipAngle ? Math.PI - this.angle : this.angle;
+            this.worldScaleX = this.scaleX;
+            this.worldScaleY = this.scaleY;
+        }
+
+        for (const child of this.children) {
+            child.updateWorldTransform();
+        }
     }
 
     setOptions(options: Partial<Sprite> = {}) {
@@ -115,9 +169,8 @@ export default class Sprite {
         this.anchorY = options.anchorY ?? this.anchorY;
         this.alpha = options.alpha ?? this.alpha;
         this.filter = options.filter ?? this.filter;
-        this.flipX = options.flipX ?? this.flipX;
-        this.flipY = options.flipY ?? this.flipY;
         this.flipAngle = options.flipAngle ?? this.flipAngle;
         this.visible = options.visible ?? this.visible;
+        this.zIndex = options.zIndex ?? this.zIndex;
     }
 }

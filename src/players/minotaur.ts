@@ -61,10 +61,12 @@ export default class Minotaur extends Player {
 
         this.hornsSprite = Sprite.createByUrl(hornsImgUrl,
             {
-                angle: Math.PI / 2
+                angle: Math.PI / 2,
+                zIndex: 11
             }
         )
         this.sprite.addChild(this.hornsSprite);
+        this.sprite.prePender = this.preRenderSprite.bind(this);
     }
 
     collisionWithRunner(runner: Runner) {
@@ -165,7 +167,7 @@ export default class Minotaur extends Player {
         super.move(this.dashDir, this.dashRunSpeed);
     }
 
-    render(ctx: CanvasRenderingContext2D) {
+    preRenderSprite() {
         if (!this.sprite) return;
 
         const [x, y] = this.body.position;
@@ -173,6 +175,5 @@ export default class Minotaur extends Player {
         this.sprite.y = y;
         this.sprite.angle = this.body.angle;
         if(this.isDead) this.sprite.filter = "grayscale(100%)"; // робить зображення сірим
-        this.sprite.render(ctx);
     }
 }

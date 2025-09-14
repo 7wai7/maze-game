@@ -1,20 +1,28 @@
 import Behaviour from "./baseBehaviour";
+import Core from "./core";
+import type Renderable from "./renderable/renderable";
 import type { ParticleValuesRanges } from "./particle";
 import Particle from "./particle";
 import Vec from "./vector";
 
-export default class ParticleSystem extends Behaviour {
-    particles: Particle[] = [];
-    maxCount = 1000;
+export default class ParticleSystem extends Behaviour implements Renderable {
     frequency = 50; // кількість частинок за секунду
-    lastCreatedTime = 0;
     origin: Vec = new Vec();
+    zIndex = 0;
 
+    private particles: Particle[] = [];
+    private maxCount = 1000;
+    private lastCreatedTime = 0;
     private fireCanvas!: HTMLCanvasElement;
+    private deadIndex = -1;
 
-    constructor() {
+    constructor(options: Partial<ParticleSystem> = {}) {
         super();
+        this.frequency = options.frequency ?? this.frequency;
+        this.origin = options.origin ?? this.origin;
+        this.zIndex = options.zIndex ?? this.zIndex;
         this.createFireCanvas();
+        Core.renderer.addRenderable(this);
     }
 
     update(dt: number) {
@@ -25,11 +33,11 @@ export default class ParticleSystem extends Behaviour {
             this.lastCreatedTime = now;
         }
 
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            const p = this.particles[i];
+        this.deadIndex = -1;
+        this.particles.forEach((p, i) => {
             p.update(dt);
-            if (p.life <= 0) this.particles.splice(i, 1);
-        }
+            if (p.life <= 0 && this.deadIndex === -1) this.deadIndex = i; // шукаємо першу мертву частинку
+        })
     }
 
     render(ctx: CanvasRenderingContext2D) {
@@ -41,8 +49,13 @@ export default class ParticleSystem extends Behaviour {
     }
 
     create(values: ParticleValuesRanges) {
-        if (this.particles.length >= this.maxCount) return;
-        this.particles.push(new Particle(values));
+        if (this.deadIndex !== -1) {
+            // перезаписуємо мертву частинку
+            this.particles[this.deadIndex].updateValues(values);
+        } else if (this.particles.length < this.maxCount) {
+            // додаємо нову, якщо не досягли maxCount
+            this.particles.push(new Particle(values));
+        }
     }
 
     getFireRanges(): ParticleValuesRanges {
@@ -55,7 +68,6 @@ export default class ParticleSystem extends Behaviour {
             img: this.fireCanvas
         }
     }
-
 
     createFireCanvas() {
         this.fireCanvas = document.createElement('canvas');

@@ -4,13 +4,15 @@ import Runner from "./players/runner";
 import Core from "./core";
 import Behaviour from "./baseBehaviour";
 import { FOW_RAYCAST_GROUP } from "./constants";
+import type Renderable from "./renderable/renderable";
 
-export default class VisionLayer extends Behaviour {
+export default class VisionLayer extends Behaviour implements Renderable {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     raysCount = 180;
     fowRadius = 500;
     scaleFactor = .25;
+    zIndex = 30;
 
     private raycastResult = new RaycastResult();
     private ray = new Ray({
@@ -29,11 +31,10 @@ export default class VisionLayer extends Behaviour {
         this.canvas.width = Core.game.worldWidth * this.scaleFactor;
         this.canvas.height = Core.game.worldHeight * this.scaleFactor;
         this.fieldOfView = Array.from({ length: this.raysCount }, () => new Vec());
-
-        this.initRenderRaysFOV();
+        Core.renderer.addRenderable(this);
     }
 
-    postUpdate(_dt: number) {
+    postUpdate() {
         if (!Core.debugTools.useTools || Core.debugTools.render.fov || Core.debugTools.render.fovRays) this.updateFOV();
     }
 
@@ -64,30 +65,29 @@ export default class VisionLayer extends Behaviour {
         }
     }
 
-    render() {
+
+    render(ctx: CanvasRenderingContext2D) {
         this.clear();
-        if (!Core.debugTools.useTools || Core.debugTools.render.fov) this.renderFOV();
+        this.renderRaysFOV();
+        this.renderFOV();
+        ctx.drawImage(this.canvas, 0, 0, Core.game.worldWidth, Core.game.worldHeight)
     }
 
     clear() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    private fillVision() {
+    private renderFOV() {
+        if (Core.debugTools.useTools && !Core.debugTools.render.fov) return;
+
         this.ctx.fillStyle = 'rgba(0, 0, 0, 1)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-
-    private renderFOV() {
-        this.fillVision();
-
-        const currentPlayer = Core.game.currentPlayer;
 
         this.ctx.save();
         this.ctx.scale(this.scaleFactor, this.scaleFactor);
-
         this.ctx.globalCompositeOperation = 'destination-out';
 
+        const currentPlayer = Core.game.currentPlayer;
         const r = Math.random();
         const flicker = currentPlayer instanceof Runner ? ((r * 10) * this.scaleFactor) : 0;
         this.ctx.filter = `blur(${(12 + flicker) * this.scaleFactor}px)`;
@@ -110,43 +110,31 @@ export default class VisionLayer extends Behaviour {
         this.ctx.restore();
     }
 
-    private initRenderRaysFOV() {
-        Core.renderer.renderSystem.add(
-            (ctx) => {
-                if (!Core.debugTools.useTools || !Core.debugTools.render.fovRays) return;
-                const [startX, startY] = Core.game.currentPlayer.body.position;
+    private renderRaysFOV() {
+        if (!Core.debugTools.useTools || !Core.debugTools.render.fovRays) return;
+        const [startX, startY] = Core.game.currentPlayer.body.position;
 
-                ctx.strokeStyle = 'yellow';
-                ctx.lineWidth = .5;
-                ctx.beginPath();
-                for (let i = 0; i < this.fieldOfView.length; i++) {
-                    const { x, y } = this.fieldOfView[i];
-                    ctx.moveTo(startX, startY);
-                    ctx.lineTo(x, y);
-                }
-                ctx.closePath();
-                ctx.stroke();
-            },
-            10
-        )
+        this.ctx.strokeStyle = 'yellow';
+        this.ctx.lineWidth = .5;
+        this.ctx.beginPath();
+        for (let i = 0; i < this.fieldOfView.length; i++) {
+            const { x, y } = this.fieldOfView[i];
+            this.ctx.moveTo(startX, startY);
+            this.ctx.lineTo(x, y);
+        }
+        this.ctx.closePath();
+        this.ctx.stroke();
 
-        Core.renderer.renderSystem.add(
-            (ctx) => {
-                if (!Core.debugTools.useTools || !Core.debugTools.render.fovRays) return;
-
-                ctx.strokeStyle = 'green';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                const { x: x0, y: y0 } = this.fieldOfView[0];
-                ctx.moveTo(x0, y0);
-                for (let i = 1; i < this.fieldOfView.length; i++) {
-                    const { x, y } = this.fieldOfView[i];
-                    ctx.lineTo(x, y);
-                }
-                ctx.closePath();
-                ctx.stroke();
-            },
-            11
-        )
+        this.ctx.strokeStyle = 'green';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        const { x: x0, y: y0 } = this.fieldOfView[0];
+        this.ctx.moveTo(x0, y0);
+        for (let i = 1; i < this.fieldOfView.length; i++) {
+            const { x, y } = this.fieldOfView[i];
+            this.ctx.lineTo(x, y);
+        }
+        this.ctx.closePath();
+        this.ctx.stroke();
     }
 }

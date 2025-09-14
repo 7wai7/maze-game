@@ -15,7 +15,7 @@ export default class Runner extends Player {
     torchAttenuationFactor = 0;
 
     private torchAttenuationSpeed = 5;
-    private torch = new ParticleSystem();
+    private torch = new ParticleSystem({ zIndex: 30 });
     private torchOffset = new Vec(9, 5);
     private torchSprite!: Sprite;
     private swordSprite!: Sprite;
@@ -31,10 +31,11 @@ export default class Runner extends Player {
                 width: 2,
                 height: 9,
                 angle: -100 * Vec.DEGTORAD,
-                anchorY: 1
+                anchorY: 1,
+                zIndex: 9
             }
         );
-        this.sprite.addChild(this.torchSprite, false);
+        this.sprite.addChild(this.torchSprite);
 
         this.swordSprite = Sprite.createByUrl(swordUrl,
             {
@@ -43,13 +44,15 @@ export default class Runner extends Player {
                 angle: 10 * Vec.DEGTORAD,
                 anchorX: .12,
                 anchorY: .81,
-                visible: false
+                visible: false,
+                zIndex: 9
             }
         )
-        this.sprite.addChild(this.swordSprite, false);
+        this.sprite.addChild(this.swordSprite);
 
         this.getItem("Sword");
         this.initCollisions();
+        this.sprite.prePender = this.preRenderSprite.bind(this);
     }
 
     getItem(item: InventoryItem) {
@@ -114,7 +117,7 @@ export default class Runner extends Player {
         });
     }
 
-    render(ctx: CanvasRenderingContext2D) {
+    preRenderSprite() {
         if (!this.sprite) return;
 
         const [x, y] = this.body.position;
@@ -127,10 +130,6 @@ export default class Runner extends Player {
             this.torchSprite.y = -this.torchOffset.y;
             this.torchSprite.flipAngle = true;
         }
-
-        this.sprite.render(ctx);
-
-        this.torch.render(ctx);
     }
 
     private renderTorch(ctx: CanvasRenderingContext2D) {

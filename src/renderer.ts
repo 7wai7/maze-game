@@ -1,20 +1,23 @@
 import Camera from "./camera";
 import VisionLayer from "./visionLayer";
-import RenderSystem from "./renderSystem";
 import Core from "./core";
+import Sprite from "./sprite";
+import type Renderable from "./renderable/renderable";
 
 export default class Renderer {
     camera = new Camera();
-    renderSystem = new RenderSystem();
+    rootSprite = new Sprite(true);
+    isModifiedQueue: boolean = false;
+    private renderQueue: Renderable[] = [];
 
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
-    private vision!: VisionLayer;
     private frameCount = 0;
     private lastTime = performance.now();
 
     private renderTimeEl!: HTMLElement;
     private fpsEl!: HTMLElement;
+    private inited = false;
 
 
     constructor() {
@@ -27,7 +30,6 @@ export default class Renderer {
 
         window.addEventListener('resize', () => this.resizeCanvas());
         window.addEventListener('wheel', (e) => this.camera.zoom(e.deltaY > 0 ? -1 : 1));
-
         document.body.appendChild(this.canvas);
 
         Core.emitter.on('change-current-player', () => {
@@ -36,25 +38,22 @@ export default class Renderer {
     }
 
     async init() {
-        this.vision = new VisionLayer();
-        const sprite = await Core.game.maze.getRenderSprite();
+        new VisionLayer();
+        Core.game.maze.renderSprite();
+        Core.game.maze.renderNumbers();
 
-        this.renderSystem.add((ctx) => ctx.drawImage(sprite, 0, 0), 0);
+        Core.emitter.on('debug-useTools', () => {
+            Core.game.maze.spriteNumbers.visible = Core.debugTools.useTools && Core.debugTools.render.mazeNumbers;
+        })
+        Core.emitter.on('debug-mazeNumbers', () => {
+            Core.game.maze.spriteNumbers.visible = Core.debugTools.useTools && Core.debugTools.render.mazeNumbers;
+        })
+        this.inited = true;
+    }
 
-        this.renderSystem.add((ctx) => {
-            for (const p of Core.game.players) p.render?.(ctx);
-        }, 10);
-
-        this.renderSystem.add(
-            (ctx) => {
-                if (Core.debugTools.useTools && Core.debugTools.render.mazeNumbers) Core.game.maze.renderNumbers(ctx)
-            }, 20
-        )
-
-        this.renderSystem.add((ctx) => {
-            this.vision.render();
-            ctx.drawImage(this.vision.canvas, 0, 0, Core.game.worldWidth, Core.game.worldHeight)
-        }, 30);
+    addRenderable(r: Renderable) {
+        this.renderQueue.push(r);
+        this.isModifiedQueue = true;
     }
 
     start() {
@@ -85,12 +84,22 @@ export default class Renderer {
     }
 
     render() {
+        if(!this.inited) return;
+        
         this.ctx.imageSmoothingEnabled = false;
         const start = performance.now();
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.camera.apply(this.ctx);
-        this.renderSystem.render(this.ctx);
+        this.rootSprite.updateWorldTransform();
+
+        if (this.isModifiedQueue) {
+            this.renderQueue.sort((a, b) => a.zIndex - b.zIndex);
+            this.isModifiedQueue = false;
+        }
+
+        for (const s of this.renderQueue) s.render(this.ctx);
+
         this.camera.reset(this.ctx);
 
         this.calculateAverageRenderTime(start);

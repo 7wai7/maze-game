@@ -67,10 +67,7 @@ export default abstract class Player extends Behaviour {
         })
         this.toggleCollisions();
 
-        this.sprite = Sprite.createByContext(this.renderSprite.bind(this), { width: 30, height: 30 })
-
-        // this.getRenderSprite()
-        //     .then(s => this.sprite = s);
+        this.sprite = Sprite.createByContext(this.renderSprite.bind(this), { width: 30, height: 30, zIndex: 10 })
     }
 
     canGetDamage() {
@@ -154,40 +151,6 @@ export default abstract class Player extends Behaviour {
         ctx.closePath();
 
         ctx.restore();
-    }
-
-    async getRenderSprite() {
-        if (this.sprite) return this.sprite;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 30;
-        canvas.height = 30;
-        const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(this.body.angle + Math.PI / 2);
-
-        // Малювання лівої руки
-        this.renderHand(ctx, true);
-
-        // Малювання правої руки
-        this.renderHand(ctx);
-
-        // Малювання персонажа
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2); // Основне коло (тіло)
-        ctx.fillStyle = this.bodyColor; // Колір тіла
-        ctx.fill();
-        ctx.strokeStyle = this.bodyBorderColor; // Темніший край
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.closePath();
-
-        ctx.restore();
-
-        // this.sprite = await loadImage(canvas.toDataURL("image/png"));
-        // return this.sprite;
     }
 
     private renderHand(ctx: CanvasRenderingContext2D, isLeft = false) {

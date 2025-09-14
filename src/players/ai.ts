@@ -5,6 +5,7 @@ import Vec from "../vector";
 import Runner from "./runner";
 import type Minotaur from "./minotaur";
 import Timer from "../timer";
+import RenderCallback from "../renderable/renderCallback";
 
 export default class AI extends Behaviour {
     minotaur: Minotaur;
@@ -33,7 +34,7 @@ export default class AI extends Behaviour {
             this.createMazePath();
         })
 
-        Core.renderer.renderSystem.add(
+        new RenderCallback(
             (ctx) => {
                 if (!Core.debugTools.useTools || !Core.debugTools.render.aiWay) return;
                 if (!this.mazePath || this.mazePath.length === 0) return;

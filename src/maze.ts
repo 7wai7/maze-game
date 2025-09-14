@@ -4,6 +4,7 @@ import floorImgUrl from "/grey-stone.jpg";
 import Vec from "./vector";
 import { loadImage } from "./utils";
 import { WALL_GROUP, WALL_MASK } from "./constants";
+import Sprite from "./sprite";
 
 export default class Maze {
     rows: number;
@@ -16,7 +17,8 @@ export default class Maze {
     mazeScale: number;
     brickWallImg!: HTMLImageElement;
     floorImg!: HTMLImageElement;
-    sprite?: HTMLImageElement;
+    sprite!: Sprite;
+    spriteNumbers!: Sprite;
 
     constructor(rows: number, cols: number) {
         this.rows = rows;
@@ -306,7 +308,7 @@ export default class Maze {
             break; // якщо доступних напрямків нема (тупик) або більше одного (розвилка) -- зупиняємо цикл
         }
 
-        if(start.x !== x || start.y !== y) return new Vec(x, y);
+        if (start.x !== x || start.y !== y) return new Vec(x, y);
         return null;
     }
 
@@ -329,54 +331,66 @@ export default class Maze {
 
 
 
-    renderNumbers(ctx: CanvasRenderingContext2D) {
-        const cellSize = this.mazeScale;
+    renderNumbers() {
+        this.spriteNumbers = Sprite.createByContext(
+            (ctx) => {
+                const cellSize = this.mazeScale;
 
-        for (let y = 0; y < this.rows; y++) {
-            for (let x = 0; x < this.cols; x++) {
-                const element = this.maze[y][x];
-                const px = cellSize * x;
-                const py = cellSize * y;
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
+                        const element = this.maze[y][x];
+                        const px = cellSize * x;
+                        const py = cellSize * y;
 
-                ctx.font = "6px Arial";
-                ctx.fillStyle = "white";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(`(${x}, ${y}) ${element}`, px + cellSize / 2, py + cellSize / 2);
+                        ctx.font = "6px Arial";
+                        ctx.fillStyle = "white";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(`(${x}, ${y}) ${element}`, px + cellSize / 2, py + cellSize / 2);
+                    }
+                }
+            },
+            {
+                width: this.cols * this.mazeScale,
+                height: this.rows * this.mazeScale,
+                anchorX: 0,
+                anchorY: 0
             }
-        }
+        )
     }
 
-    async getRenderSprite() {
+    async renderSprite() {
         if (this.sprite) return this.sprite;
-
         this.brickWallImg = await loadImage(brickWallImgUrl);
         this.floorImg = await loadImage(floorImgUrl);
 
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-        ctx.imageSmoothingEnabled = false;
+        this.sprite = Sprite.createByContext(
+            (ctx) => {
+                ctx.imageSmoothingEnabled = false;
+                const cellSize = this.mazeScale;
 
-        canvas.width = this.cols * this.mazeScale;
-        canvas.height = this.rows * this.mazeScale;
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
+                        const element = this.maze[y][x];
+                        const px = cellSize * x;
+                        const py = cellSize * y;
 
-        const cellSize = this.mazeScale;
-
-        for (let y = 0; y < this.rows; y++) {
-            for (let x = 0; x < this.cols; x++) {
-                const element = this.maze[y][x];
-                const px = cellSize * x;
-                const py = cellSize * y;
-
-                if (element === this.wall) {
-                    ctx.drawImage(this.brickWallImg, px, py, cellSize, cellSize);
-                } else {
-                    ctx.drawImage(this.floorImg, px, py, cellSize, cellSize);
+                        if (element === this.wall) {
+                            ctx.drawImage(this.brickWallImg, px, py, cellSize, cellSize);
+                        } else {
+                            ctx.drawImage(this.floorImg, px, py, cellSize, cellSize);
+                        }
+                    }
                 }
+            },
+            {
+                width: this.cols * this.mazeScale,
+                height: this.rows * this.mazeScale,
+                anchorX: 0,
+                anchorY: 0
             }
-        }
+        )
 
-        this.sprite = await loadImage(canvas.toDataURL("image/png"));
         return this.sprite;
     }
 }

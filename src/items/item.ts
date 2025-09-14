@@ -32,15 +32,19 @@ export default class Item {
 
         this.sprite = Sprite.createByContext(
             (ctx) => {
+                ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
                 ctx.beginPath();
-                ctx.arc(this.worldPosition.x, this.worldPosition.y, 5, 0, Math.PI * 2); // Основне коло (тіло)
+                ctx.arc(0, 0, 5, 0, Math.PI * 2); // Основне коло (тіло)
                 ctx.fillStyle = "red"; // Колір тіла
                 ctx.fill();
                 ctx.closePath();
             },
             {
                 width: 20,
-                height: 20
+                height: 20,
+                x: this.worldPosition.x,
+                y: this.worldPosition.y,
+                zIndex: 30
             }
         )
     }
