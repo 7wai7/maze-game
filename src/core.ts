@@ -12,7 +12,7 @@ export default class Core {
     static gameObjects: Behaviour[] = [];
 
     static debugTools = {
-        useTools: true,
+        useTools: false,
         game: {
             collisions: false,
             fastSpeed: true
